@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function SiteHeader() {
+  const pathname = usePathname();
+  const navLink = (matches: boolean) => `site-nav__link${matches ? " site-nav__link--active" : ""}`;
+
   return (
     <header className="site-header">
       <div className="site-header__inner">
@@ -12,10 +18,18 @@ export function SiteHeader() {
         </Link>
 
         <nav className="site-nav" aria-label="主要導覽">
-          <Link className="site-nav__link site-nav__link--active" href="/">
+          <Link
+            className={navLink(pathname === "/" || pathname.startsWith("/content"))}
+            href="/"
+            aria-current={pathname === "/" ? "page" : undefined}
+          >
             今日精選
           </Link>
-          <Link className="site-nav__link" href="/search">
+          <Link
+            className={navLink(pathname.startsWith("/search"))}
+            href="/search"
+            aria-current={pathname.startsWith("/search") ? "page" : undefined}
+          >
             搜尋內容
           </Link>
           <Link className="site-nav__search" href="/search" aria-label="搜尋教學內容">

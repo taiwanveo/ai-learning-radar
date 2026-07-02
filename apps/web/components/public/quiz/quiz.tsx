@@ -27,7 +27,7 @@ export function Quiz({ quiz }: { quiz: QuizData }) {
               const selected = answers[key] === optionKey;
               const correct = submitted && optionKey === question.correctOptionKey;
               const wrong = submitted && selected && !correct;
-              return <label className={`quiz-option${correct ? " quiz-option--correct" : ""}${wrong ? " quiz-option--wrong" : ""}`} key={optionKey}><input type="radio" name={key} value={optionKey} checked={selected} onChange={() => setAnswers((current) => ({ ...current, [key]: optionKey }))} /><strong>{optionKey}</strong><span>{text}</span></label>;
+              return <label className={`quiz-option${correct ? " quiz-option--correct" : ""}${wrong ? " quiz-option--wrong" : ""}`} key={optionKey}><input type="radio" name={key} value={optionKey} checked={selected} onChange={() => setAnswers((current) => ({ ...current, [key]: optionKey }))} /><strong>{optionKey}</strong><span>{text}</span>{correct ? <em className="quiz-option__verdict">✓ 正確</em> : null}{wrong ? <em className="quiz-option__verdict">✕ 你的選擇</em> : null}</label>;
             })}</div>
             {submitted ? <div className="quiz-explanation" role="status"><strong>{answers[key] === question.correctOptionKey ? "答對了" : `正確答案是 ${question.correctOptionKey}`}</strong><p>{question.explanation}</p><small>影片依據：{question.evidenceText}</small></div> : null}
           </fieldset>

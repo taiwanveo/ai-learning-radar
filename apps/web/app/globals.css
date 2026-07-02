@@ -34,6 +34,12 @@ a {
   text-decoration: none;
 }
 
+:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
 button,
 input,
 select {
@@ -113,9 +119,17 @@ select {
 .brand__mark span {
   width: 2px;
   height: 13px;
-  transform: translate(7px, -6px) rotate(45deg);
+  margin-bottom: 13px;
+  transform: rotate(45deg);
   transform-origin: bottom;
+  animation: radar-sweep 6s linear infinite;
   background: var(--green);
+}
+
+@keyframes radar-sweep {
+  to {
+    transform: rotate(405deg);
+  }
 }
 
 .site-nav {
@@ -362,6 +376,7 @@ select {
 }
 
 .video-card:hover {
+  border-color: rgb(20 107 80 / 35%);
   box-shadow: var(--shadow);
   transform: translateY(-3px);
 }
@@ -388,6 +403,12 @@ select {
   border: 1px solid rgb(17 63 48 / 24%);
   border-radius: 50%;
   content: "";
+}
+
+/* The radar rings are a placeholder motif; a real thumbnail replaces them. */
+.video-card__visual:has(img)::before,
+.video-card__visual:has(img)::after {
+  content: none;
 }
 
 .video-card__visual::before {
@@ -670,6 +691,10 @@ select {
   font-weight: 700;
 }
 
+.primary-button:hover:not(:disabled) {
+  background: var(--green);
+}
+
 .primary-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
@@ -716,6 +741,12 @@ select {
   border: 1px solid var(--line);
   border-radius: 18px;
   background: var(--paper);
+}
+
+.detail-facts__thumbnail {
+  width: 100%;
+  margin-bottom: 1rem;
+  border-radius: 12px;
 }
 
 .detail-facts dl {
@@ -839,6 +870,22 @@ select {
 .quiz-option--wrong {
   border-color: #bd6c62;
   background: #faeae7;
+}
+
+.quiz-option__verdict {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.quiz-option--correct .quiz-option__verdict {
+  color: #19634a;
+}
+
+.quiz-option--wrong .quiz-option__verdict {
+  color: #9b3d34;
 }
 
 .quiz-explanation {
@@ -1067,5 +1114,9 @@ select {
   .video-card,
   .detail-link span {
     transition: none;
+  }
+
+  .brand__mark span {
+    animation: none;
   }
 }

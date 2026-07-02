@@ -7,7 +7,9 @@ type SearchPageProps = { searchParams: Promise<Record<string, string | string[] 
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const raw = await searchParams;
-  const query = searchQuerySchema.parse({ q: typeof raw.q === "string" ? raw.q : "", difficulty: typeof raw.difficulty === "string" ? raw.difficulty : "all" });
+  const q = typeof raw.q === "string" ? raw.q.slice(0, 120) : "";
+  const difficulty = typeof raw.difficulty === "string" && ["all", "beginner", "normal"].includes(raw.difficulty) ? raw.difficulty : "all";
+  const query = searchQuerySchema.parse({ q, difficulty });
   const result = await searchContent(query);
   return (
     <main className="page-shell search-page">

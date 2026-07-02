@@ -11,7 +11,7 @@ export function FilterBar({ topic, difficulty, sort, language, published, conten
   return (
     <form className="filter-bar" action="/" aria-label="內容篩選">
       <div className="filter-bar__items">
-        <label className="filter-field"><span>主題</span><select name="topic" defaultValue={topic}><option value="artificial-intelligence">所有 AI 主題</option><option value="rag">RAG</option><option value="ai agent">AI Agent</option><option value="prompt">提示工程</option><option value="llm">LLM</option></select></label>
+        <label className="filter-field"><span>主題</span><select name="topic" defaultValue={topic}><option value="artificial-intelligence">所有 AI 主題</option><option value="rag">RAG</option><option value="ai-agent">AI Agent</option><option value="prompt-engineering">提示工程</option><option value="llm">LLM</option></select></label>
         <label className="filter-field"><span>難度</span><select name="difficulty" defaultValue={difficulty}><option value="all">所有難度</option><option value="beginner">入門</option><option value="normal">一般</option></select></label>
         <label className="filter-field"><span>語言</span><select name="language" defaultValue={language ?? ""}><option value="">所有語言</option><option value="zh-Hant">繁體中文</option><option value="zh-Hans">簡體中文</option><option value="en">英文</option></select></label>
         <label className="filter-field"><span>發布時間</span><select name="published" defaultValue={published}><option value="all">不限時間</option><option value="7d">最近 7 天</option><option value="30d">最近 30 天</option><option value="90d">最近 90 天</option></select></label>

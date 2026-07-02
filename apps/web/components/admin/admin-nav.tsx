@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { AdminRole } from "@/server/admin/types";
 
 export const adminMenu = [
@@ -13,4 +16,9 @@ export const adminMenu = [
 ] as const satisfies readonly { href: string; label: string; roles: readonly AdminRole[] }[];
 
 export function menuForRole(role: AdminRole) { return adminMenu.filter(item => (item.roles as readonly AdminRole[]).includes(role)); }
-export function AdminNav({ role }: { role: AdminRole }) { return <nav className="admin-nav" aria-label="管理後台">{menuForRole(role).map(item => <Link href={item.href} key={item.href}>{item.label}</Link>)}</nav>; }
+
+export function AdminNav({ role }: { role: AdminRole }) {
+  const pathname = usePathname();
+  const isActive = (href: string) => href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+  return <nav className="admin-nav" aria-label="管理後台">{menuForRole(role).map(item => <Link href={item.href} key={item.href} className={isActive(item.href) ? "admin-nav__link--active" : undefined} aria-current={isActive(item.href) ? "page" : undefined}>{item.label}</Link>)}</nav>;
+}

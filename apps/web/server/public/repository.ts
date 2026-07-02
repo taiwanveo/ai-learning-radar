@@ -109,7 +109,8 @@ function applyDemoFilters(items: ContentDetail[], query: DigestQuery): ContentDe
     if (query.recommended !== "all" && item.isRecommendedChannel !== (query.recommended === "true")) return false;
     if (query.contentType === "video" && item.sourceType !== "youtube") return false;
     if (query.contentType === "article" && item.sourceType !== "article") return false;
-    return query.topic === "artificial-intelligence" || item.topicNames.some((topic) => topic.toLowerCase().includes(query.topic.toLowerCase()));
+    const topicNeedle = query.topic.toLowerCase().replaceAll("-", " ");
+    return query.topic === "artificial-intelligence" || item.topicNames.some((topic) => topic.toLowerCase().includes(topicNeedle));
   });
   return filtered.sort((a, b) => {
     if (query.sort === "views" || query.sort === "popular") return b.viewCount - a.viewCount;

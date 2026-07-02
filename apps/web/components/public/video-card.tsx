@@ -19,7 +19,7 @@ export function VideoCard({ video, rank = 1 }: VideoCardProps) {
   return (
     <article className="video-card">
       <Link className={`video-card__visual video-card__visual--${accent}`} href={`/content/${video.id}`}>
-        {video.thumbnailUrl ? <img src={video.thumbnailUrl} alt="" loading="lazy" /> : <span className="video-card__signal" aria-hidden="true"><i /><i /><i /><i /></span>}
+        {video.thumbnailUrl ? <img src={video.thumbnailUrl} alt={`${video.title} 影片縮圖`} loading="lazy" /> : <span className="video-card__signal" aria-hidden="true"><i /><i /><i /><i /></span>}
         <span className="video-card__rank">#{rank.toString().padStart(2, "0")}</span>
         <span className="video-card__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 7 8 5-8 5V7Z" /></svg></span>
       </Link>

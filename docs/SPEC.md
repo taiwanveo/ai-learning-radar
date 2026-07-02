@@ -30,14 +30,14 @@
 #### Query parameters
 
 ```text
-topic=ai
+topic=artificial-intelligence|rag|ai-agent|prompt-engineering|llm|…（topic slug）
 date=2026-07-02
-sort=default|latest|popular|beginner
-level=beginner|all
+sort=default|latest|popular|beginner|engagement
+level=beginner|normal|all
 content_type=video|article|all
-language=zh-Hant|zh-Hans|zh|all
+language=zh-Hant|zh-Hans|en（省略 = 所有語言）
 published=7d|30d|90d|all
-q=RAG
+q=RAG（由 /search 頁面處理）
 ```
 
 #### Acceptance criteria
@@ -110,14 +110,15 @@ q=RAG
 POST /api/public/learning-path
 ```
 
-回傳：
+回傳（對應 `learningPathResponseSchema`）：
 
-- 建議觀看順序。
-- 每個推薦項目的理由。
-- 初學者注意事項。
-- 下一步學習建議。
+- `guidance`：整體學習指引與初學者注意事項。
+- `recommended_order`：建議觀看順序，每項含理由與 `learning_role`。
+- `watch_later`：較進階、建議稍後再看的項目與理由。
+- `next_steps`：下一步學習建議。
 
-為節省成本，第一版不自動產生學習指引。
+為節省成本，第一版不自動產生學習指引；按鈕僅在搜尋結果 >= 3 筆時顯示，
+且產生時只使用當頁搜尋結果。
 
 ### 2.4 Admin Console
 
@@ -465,7 +466,7 @@ POST /api/public/learning-path
 Request：
 
 ```text
-?topic=ai&date=2026-07-02&sort=default&level=all
+?topic=artificial-intelligence&date=2026-07-02&sort=default&level=all
 ```
 
 Response：
@@ -473,7 +474,7 @@ Response：
 ```json
 {
   "date": "2026-07-02",
-  "topic": { "id": "ai", "name": "人工智慧" },
+  "topic": { "id": "30000000-0000-4000-8000-000000000001", "slug": "artificial-intelligence", "name": "人工智慧" },
   "items": [
     {
       "id": "content_123",
@@ -501,9 +502,9 @@ Response：
 ### 11.2 Admin APIs
 
 ```text
-GET /api/admin/me
-POST /api/admin/login
-POST /api/admin/logout
+GET /api/admin/auth/session
+POST /api/admin/auth/login
+POST /api/admin/auth/logout
 GET /api/admin/topics
 POST /api/admin/topics
 PATCH /api/admin/topics/:id
@@ -521,12 +522,16 @@ POST /api/admin/content/manual-youtube
 GET /api/admin/runs
 GET /api/admin/runs/:id
 POST /api/admin/runs/trigger
-GET /api/admin/llm/providers
-POST /api/admin/llm/keys
-POST /api/admin/llm/keys/:id/validate
-DELETE /api/admin/llm/keys/:id
+GET /api/admin/llm
+POST /api/admin/llm
+POST /api/admin/llm/validate
+POST /api/admin/llm/models
+PUT /api/admin/llm/fallback
 GET /api/admin/audit-logs
 ```
+
+備註：`/admin/login` 位於未驗證的路由層（route group `(console)` 之外），其餘 `/admin/*`
+頁面共用需要 session 的 layout，未登入一律重導到 `/admin/login`。
 
 ## 12. Admin 手動新增 YouTube 影片
 

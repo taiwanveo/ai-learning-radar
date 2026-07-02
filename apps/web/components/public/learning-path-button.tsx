@@ -14,9 +14,13 @@ export function LearningPathButton({ query, difficulty, results }: { query: stri
   function generate() {
     setError("");
     startTransition(async () => {
-      const response = await fetch("/api/public/learning-path", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query, difficulty, contentItemIds: results.map(({ id }) => id) }) });
-      if (!response.ok) { const body = await response.json() as { error?: string }; setError(body.error ?? "目前無法產生學習指引"); return; }
-      setPath(await response.json() as LearningPath);
+      try {
+        const response = await fetch("/api/public/learning-path", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query, difficulty, contentItemIds: results.map(({ id }) => id) }) });
+        if (!response.ok) { const body = await response.json().catch(() => null) as { error?: string } | null; setError(body?.error ?? "目前無法產生學習指引"); return; }
+        setPath(await response.json() as LearningPath);
+      } catch {
+        setError("目前無法產生學習指引，請稍後再試");
+      }
     });
   }
 
