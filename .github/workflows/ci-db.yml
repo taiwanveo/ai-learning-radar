@@ -1,0 +1,32 @@
+name: Database CI
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - "packages/db/**"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_learning_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test --workspace @ai-learning-radar/db
+      - run: npm run db:seed:demo:test --workspace @ai-learning-radar/db

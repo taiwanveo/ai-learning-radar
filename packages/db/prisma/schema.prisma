@@ -1,0 +1,581 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SourceType {
+  youtube
+  article
+  bilibili
+  rss
+  manual
+
+  @@map("source_type")
+}
+
+enum ContentStatus {
+  discovered
+  metadata_fetched
+  filtered_out
+  transcript_ready
+  analysis_ready
+  quiz_ready
+  published
+  hidden
+  deleted
+  failed
+
+  @@map("content_status")
+}
+
+enum DifficultyLevel {
+  beginner
+  normal
+
+  @@map("difficulty_level")
+}
+
+enum AdminRole {
+  owner
+  admin
+  editor
+  viewer
+
+  @@map("admin_role")
+}
+
+enum ChannelListType {
+  recommended
+  blacklisted
+  neutral
+
+  @@map("channel_list_type")
+}
+
+enum RunStatus {
+  running
+  succeeded
+  partial_failed
+  failed
+  cancelled
+
+  @@map("run_status")
+}
+
+enum LlmTaskType {
+  classify
+  summarize
+  quiz
+  learning_path
+  repair_json
+
+  @@map("llm_task_type")
+}
+
+model Admin {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email               String         @unique
+  name                String
+  passwordHash        String         @map("password_hash")
+  role                AdminRole      @default(editor)
+  isActive            Boolean        @default(true) @map("is_active")
+  lastLoginAt         DateTime?      @map("last_login_at") @db.Timestamptz(6)
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions            AdminSession[]
+  auditLogs           AuditLog[]
+  difficultyOverrides ContentItem[]  @relation("DifficultyOverride")
+  requestedRuns       AgentRun[]
+  createdLlmApiKeys   LlmApiKey[]
+
+  @@map("admins")
+}
+
+model AdminSession {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId          String   @map("admin_id") @db.Uuid
+  sessionTokenHash String   @unique @map("session_token_hash")
+  expiresAt        DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  admin            Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("admin_sessions")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId    String?  @map("admin_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  beforeJson Json?    @map("before_json") @db.JsonB
+  afterJson  Json?    @map("after_json") @db.JsonB
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  admin      Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([adminId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model Topic {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug             String                  @unique
+  nameZhHant       String                  @map("name_zh_hant")
+  description      String?
+  parentTopicId    String?                 @map("parent_topic_id") @db.Uuid
+  isActive         Boolean                 @default(true) @map("is_active")
+  sortOrder        Int                     @default(0) @map("sort_order")
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  parent           Topic?                  @relation("TopicTree", fields: [parentTopicId], references: [id], onDelete: SetNull)
+  children         Topic[]                 @relation("TopicTree")
+  keywords         TopicKeyword[]
+  searchSettings   TopicSearchSetting?
+  contentScores    ContentScore[]
+  contentTopics    ContentTopic[]
+  dailySnapshots   DailyDigestSnapshot[]
+  runEvents        AgentRunEvent[]
+  searchCandidates SearchResultCandidate[]
+
+  @@index([parentTopicId])
+  @@index([isActive, sortOrder])
+  @@map("topics")
+}
+
+model TopicKeyword {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  topicId     String   @map("topic_id") @db.Uuid
+  keyword     String
+  keywordType String   @map("keyword_type")
+  weight      Decimal  @default(1.0) @db.Decimal(8, 4)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, keyword, keywordType])
+  @@index([topicId, isActive])
+  @@map("topic_keywords")
+}
+
+model TopicSearchSetting {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  topicId                String   @unique @map("topic_id") @db.Uuid
+  freshnessDays          Int      @default(90) @map("freshness_days")
+  candidateLimit         Int      @default(50) @map("candidate_limit")
+  topN                   Int      @default(20) @map("top_n")
+  minDurationSeconds     Int      @default(300) @map("min_duration_seconds")
+  maxDurationSeconds     Int      @default(7200) @map("max_duration_seconds")
+  excludeShorts          Boolean  @default(true) @map("exclude_shorts")
+  minViewCount           BigInt   @default(0) @map("min_view_count")
+  minEngagementScore     Decimal  @default(0.05) @map("min_engagement_score") @db.Decimal(8, 6)
+  growthGuardrailEnabled Boolean  @default(false) @map("growth_guardrail_enabled")
+  minViewsPerDay         Int      @default(250) @map("min_views_per_day")
+  autoPublish            Boolean  @default(true) @map("auto_publish")
+  youtubeRegionCode      String   @default("TW") @map("youtube_region_code")
+  relevanceLanguage      String   @default("zh-Hant") @map("relevance_language")
+  searchOrder            String   @default("relevance") @map("search_order")
+  scheduleCron           String   @default("0 21 * * *") @map("schedule_cron")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  topic                  Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@map("topic_search_settings")
+}
+
+model Channel {
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceType           SourceType      @default(youtube) @map("source_type")
+  sourceChannelId      String          @map("source_channel_id")
+  handle               String?
+  title                String
+  description          String?
+  thumbnailUrl         String?         @map("thumbnail_url")
+  subscriberCount      BigInt?         @map("subscriber_count")
+  videoCount           BigInt?         @map("video_count")
+  viewCount            BigInt?         @map("view_count")
+  listType             ChannelListType @default(neutral) @map("list_type")
+  trustWeight          Decimal         @default(0) @map("trust_weight") @db.Decimal(8, 4)
+  recommendationReason String?         @map("recommendation_reason")
+  metadataJson         Json?           @map("metadata_json") @db.JsonB
+  lastFetchedAt        DateTime?       @map("last_fetched_at") @db.Timestamptz(6)
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contentItems         ContentItem[]
+
+  @@unique([sourceType, sourceChannelId])
+  @@index([listType])
+  @@map("channels")
+}
+
+model ContentItem {
+  id                       String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceType               SourceType          @map("source_type")
+  sourceContentId          String              @map("source_content_id")
+  sourceUrl                String              @map("source_url")
+  canonicalUrl             String?             @map("canonical_url")
+  title                    String
+  description              String?
+  thumbnailUrl             String?             @map("thumbnail_url")
+  channelId                String?             @map("channel_id") @db.Uuid
+  channelTitle             String?             @map("channel_title")
+  language                 String?
+  captionLanguage          String?             @map("caption_language")
+  publishedAt              DateTime?           @map("published_at") @db.Timestamptz(6)
+  durationSeconds          Int?                @map("duration_seconds")
+  status                   ContentStatus       @default(discovered)
+  isTutorial               Boolean?            @map("is_tutorial")
+  tutorialConfidence       Decimal?            @map("tutorial_confidence") @db.Decimal(5, 4)
+  tutorialReason           String?             @map("tutorial_reason")
+  difficulty               DifficultyLevel     @default(normal)
+  difficultyConfidence     Decimal?            @map("difficulty_confidence") @db.Decimal(5, 4)
+  difficultyReason         String?             @map("difficulty_reason")
+  difficultyOverriddenById String?             @map("difficulty_overridden_by") @db.Uuid
+  difficultyOverriddenAt   DateTime?           @map("difficulty_overridden_at") @db.Timestamptz(6)
+  isPinned                 Boolean             @default(false) @map("is_pinned")
+  manualSortOrder          Int?                @map("manual_sort_order")
+  hiddenReason             String?             @map("hidden_reason")
+  rawMetadataJson          Json?               @map("raw_metadata_json") @db.JsonB
+  createdAt                DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  channel                  Channel?            @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  difficultyOverriddenBy   Admin?              @relation("DifficultyOverride", fields: [difficultyOverriddenById], references: [id], onDelete: SetNull)
+  youtubeStats             YoutubeVideoStat[]
+  scores                   ContentScore[]
+  transcripts              Transcript[]
+  summaries                ContentSummary[]
+  learningObjectives       LearningObjective[]
+  tags                     ContentTag[]
+  topics                   ContentTopic[]
+  quizzes                  Quiz[]
+  dailyDigestItems         DailyDigestItem[]
+  runEvents                AgentRunEvent[]
+  llmCallLogs              LlmCallLog[]
+
+  @@unique([sourceType, sourceContentId])
+  @@index([status])
+  @@index([publishedAt(sort: Desc)])
+  @@index([difficulty])
+  @@index([channelId])
+  @@map("content_items")
+}
+
+model YoutubeVideoStat {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentItemId String      @map("content_item_id") @db.Uuid
+  viewCount     BigInt      @default(0) @map("view_count")
+  likeCount     BigInt      @default(0) @map("like_count")
+  commentCount  BigInt      @default(0) @map("comment_count")
+  fetchedAt     DateTime    @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  @@unique([contentItemId, fetchedAt])
+  @@index([contentItemId, fetchedAt(sort: Desc)])
+  @@map("youtube_video_stats")
+}
+
+model ContentScore {
+  id                   String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentItemId        String      @map("content_item_id") @db.Uuid
+  topicId              String?     @map("topic_id") @db.Uuid
+  ageDays              Int         @map("age_days")
+  engagementScore      Decimal     @map("engagement_score") @db.Decimal(12, 8)
+  freshEngagementScore Decimal     @map("fresh_engagement_score") @db.Decimal(12, 8)
+  viewVelocity         Decimal     @map("view_velocity") @db.Decimal(16, 4)
+  commentSignal        Decimal     @map("comment_signal") @db.Decimal(8, 6)
+  channelTrustScore    Decimal     @default(0) @map("channel_trust_score") @db.Decimal(8, 6)
+  topicRelevanceScore  Decimal?    @map("topic_relevance_score") @db.Decimal(8, 6)
+  tutorialQualityScore Decimal?    @map("tutorial_quality_score") @db.Decimal(8, 6)
+  radarScore           Decimal?    @map("radar_score") @db.Decimal(12, 8)
+  calculatedAt         DateTime    @default(now()) @map("calculated_at") @db.Timestamptz(6)
+  contentItem          ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  topic                Topic?      @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@unique([contentItemId, topicId, calculatedAt])
+  @@index([topicId, calculatedAt(sort: Desc)])
+  @@map("content_scores")
+}
+
+model Transcript {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentItemId  String           @map("content_item_id") @db.Uuid
+  language       String
+  source         String
+  transcriptText String           @map("transcript_text")
+  transcriptHash String           @map("transcript_hash")
+  retrievedAt    DateTime         @default(now()) @map("retrieved_at") @db.Timestamptz(6)
+  contentItem    ContentItem      @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  summaries      ContentSummary[]
+
+  @@unique([contentItemId, transcriptHash])
+  @@map("transcripts")
+}
+
+model ContentSummary {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentItemId     String      @map("content_item_id") @db.Uuid
+  transcriptId      String?     @map("transcript_id") @db.Uuid
+  promptVersion     String      @map("prompt_version")
+  provider          String
+  modelId           String      @map("model_id")
+  suitableFor       String      @map("suitable_for")
+  shortSummary      String      @map("short_summary")
+  fullSummary       String      @map("full_summary")
+  transcriptSummary String?     @map("transcript_summary")
+  rawJson           Json        @map("raw_json") @db.JsonB
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  transcript        Transcript? @relation(fields: [transcriptId], references: [id], onDelete: SetNull)
+
+  @@unique([contentItemId, transcriptId, promptVersion, provider, modelId])
+  @@index([contentItemId, createdAt(sort: Desc)])
+  @@map("content_summaries")
+}
+
+model LearningObjective {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentItemId String      @map("content_item_id") @db.Uuid
+  objectiveText String      @map("objective_text")
+  sortOrder     Int         @default(0) @map("sort_order")
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  @@index([contentItemId, sortOrder])
+  @@map("learning_objectives")
+}
+
+model Tag {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String       @unique
+  normalizedName String       @unique @map("normalized_name")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  contentItems   ContentTag[]
+
+  @@map("tags")
+}
+
+model ContentTag {
+  contentItemId String      @map("content_item_id") @db.Uuid
+  tagId         String      @map("tag_id") @db.Uuid
+  confidence    Decimal?    @db.Decimal(5, 4)
+  source        String      @default("llm")
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contentItemId, tagId])
+  @@index([tagId])
+  @@map("content_tags")
+}
+
+model ContentTopic {
+  contentItemId  String      @map("content_item_id") @db.Uuid
+  topicId        String      @map("topic_id") @db.Uuid
+  relevanceScore Decimal?    @map("relevance_score") @db.Decimal(8, 6)
+  source         String      @default("worker")
+  contentItem    ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  topic          Topic       @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([contentItemId, topicId])
+  @@index([topicId])
+  @@map("content_topics")
+}
+
+model Quiz {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentItemId String         @map("content_item_id") @db.Uuid
+  promptVersion String         @map("prompt_version")
+  provider      String
+  modelId       String         @map("model_id")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  contentItem   ContentItem    @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  questions     QuizQuestion[]
+
+  @@unique([contentItemId, promptVersion, provider, modelId])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quizId           String       @map("quiz_id") @db.Uuid
+  questionType     String       @map("question_type")
+  questionText     String       @map("question_text")
+  correctOptionKey String       @map("correct_option_key")
+  explanation      String
+  evidenceText     String       @map("evidence_text")
+  sortOrder        Int          @default(0) @map("sort_order")
+  quiz             Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options          QuizOption[]
+
+  @@index([quizId, sortOrder])
+  @@map("quiz_questions")
+}
+
+model QuizOption {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionId String       @map("question_id") @db.Uuid
+  optionKey  String       @map("option_key")
+  optionText String       @map("option_text")
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionKey])
+  @@map("quiz_options")
+}
+
+model DailyDigestSnapshot {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  topicId        String            @map("topic_id") @db.Uuid
+  snapshotDate   DateTime          @map("snapshot_date") @db.Date
+  rankingMethod  String            @default("fresh_engagement_score") @map("ranking_method")
+  createdByRunId String?           @map("created_by_run_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  topic          Topic             @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  createdByRun   AgentRun?         @relation(fields: [createdByRunId], references: [id], onDelete: SetNull)
+  items          DailyDigestItem[]
+
+  @@unique([topicId, snapshotDate, rankingMethod])
+  @@index([topicId, snapshotDate(sort: Desc)])
+  @@index([createdByRunId])
+  @@map("daily_digest_snapshots")
+}
+
+model DailyDigestItem {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  snapshotId       String              @map("snapshot_id") @db.Uuid
+  contentItemId    String              @map("content_item_id") @db.Uuid
+  rank             Int
+  score            Decimal             @db.Decimal(12, 8)
+  isManualOverride Boolean             @default(false) @map("is_manual_override")
+  manualReason     String?             @map("manual_reason")
+  snapshot         DailyDigestSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  contentItem      ContentItem         @relation(fields: [contentItemId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, rank])
+  @@unique([snapshotId, contentItemId])
+  @@index([snapshotId, rank])
+  @@index([contentItemId])
+  @@map("daily_digest_items")
+}
+
+model AgentRun {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  triggerType           String                  @map("trigger_type")
+  status                RunStatus               @default(running)
+  startedAt             DateTime                @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt               DateTime?               @map("ended_at") @db.Timestamptz(6)
+  requestedByAdminId    String?                 @map("requested_by_admin_id") @db.Uuid
+  settingsSnapshot      Json?                   @map("settings_snapshot") @db.JsonB
+  summaryJson           Json?                   @map("summary_json") @db.JsonB
+  errorMessage          String?                 @map("error_message")
+  requestedByAdmin      Admin?                  @relation(fields: [requestedByAdminId], references: [id], onDelete: SetNull)
+  events                AgentRunEvent[]
+  searchCandidates      SearchResultCandidate[]
+  llmCallLogs           LlmCallLog[]
+  createdDailySnapshots DailyDigestSnapshot[]
+
+  @@index([status, startedAt(sort: Desc)])
+  @@index([requestedByAdminId])
+  @@map("agent_runs")
+}
+
+model AgentRunEvent {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId         String       @map("run_id") @db.Uuid
+  topicId       String?      @map("topic_id") @db.Uuid
+  contentItemId String?      @map("content_item_id") @db.Uuid
+  phase         String
+  level         String
+  message       String
+  dataJson      Json?        @map("data_json") @db.JsonB
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  run           AgentRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  topic         Topic?       @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  contentItem   ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+
+  @@index([runId, createdAt(sort: Desc)])
+  @@index([topicId])
+  @@index([contentItemId])
+  @@map("agent_run_events")
+}
+
+model SearchResultCandidate {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId           String     @map("run_id") @db.Uuid
+  topicId         String?    @map("topic_id") @db.Uuid
+  query           String
+  sourceType      SourceType @default(youtube) @map("source_type")
+  sourceContentId String     @map("source_content_id")
+  rawResultJson   Json?      @map("raw_result_json") @db.JsonB
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  run             AgentRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  topic           Topic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@unique([runId, topicId, query, sourceType, sourceContentId])
+  @@index([runId])
+  @@index([topicId])
+  @@map("search_result_candidates")
+}
+
+model LlmApiKey {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider         String
+  displayName      String    @map("display_name")
+  encryptedKey     String    @map("encrypted_key")
+  encryptionIv     String    @map("encryption_iv")
+  encryptionTag    String    @map("encryption_tag")
+  maskedKey        String    @map("masked_key")
+  isActive         Boolean   @default(true) @map("is_active")
+  lastValidatedAt  DateTime? @map("last_validated_at") @db.Timestamptz(6)
+  validationStatus String?   @map("validation_status")
+  validationError  String?   @map("validation_error")
+  createdByAdminId String?   @map("created_by_admin_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdByAdmin   Admin?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([provider, isActive])
+  @@index([createdByAdminId])
+  @@map("llm_api_keys")
+}
+
+model LlmModelSetting {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskType  LlmTaskType @map("task_type")
+  provider  String
+  modelId   String      @map("model_id")
+  priority  Int         @default(0)
+  isActive  Boolean     @default(true) @map("is_active")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([taskType, provider, modelId])
+  @@index([taskType, isActive, priority])
+  @@map("llm_model_settings")
+}
+
+model LlmCallLog {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId           String?      @map("run_id") @db.Uuid
+  contentItemId   String?      @map("content_item_id") @db.Uuid
+  taskType        LlmTaskType  @map("task_type")
+  provider        String
+  modelId         String       @map("model_id")
+  promptVersion   String       @map("prompt_version")
+  status          String
+  inputTokens     Int?         @map("input_tokens")
+  outputTokens    Int?         @map("output_tokens")
+  costEstimateUsd Decimal?     @map("cost_estimate_usd") @db.Decimal(12, 6)
+  latencyMs       Int?         @map("latency_ms")
+  errorMessage    String?      @map("error_message")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  run             AgentRun?    @relation(fields: [runId], references: [id], onDelete: SetNull)
+  contentItem     ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+
+  @@index([runId, createdAt(sort: Desc)])
+  @@index([contentItemId])
+  @@index([taskType, createdAt(sort: Desc)])
+  @@map("llm_call_logs")
+}

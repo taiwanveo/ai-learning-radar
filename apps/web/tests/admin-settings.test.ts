@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { settingsSchema } from "@/server/admin/schemas";
+const base = { topicId: "00000000-0000-4000-8000-000000000001", freshnessDays: 90, candidateLimit: 50, topN: 20, minDurationSeconds: 300, maxDurationSeconds: 7200, excludeShorts: true, minViewCount: 0, minEngagementScore: .05, growthGuardrailEnabled: false, minViewsPerDay: 250, autoPublish: true, youtubeRegionCode: "tw", relevanceLanguage: "zh-Hant", searchOrder: "relevance", scheduleCron: "0 21 * * *" };
+describe("admin settings validation", () => { it("normalizes region", () => expect(settingsSchema.parse(base).youtubeRegionCode).toBe("TW")); it("caps quota and ordering", () => { expect(() => settingsSchema.parse({ ...base, candidateLimit: 501 })).toThrow(); expect(() => settingsSchema.parse({ ...base, topN: 51 })).toThrow(); expect(() => settingsSchema.parse({ ...base, minDurationSeconds: 8000 })).toThrow(); }); });

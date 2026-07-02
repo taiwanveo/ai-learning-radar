@@ -1,0 +1,5 @@
+import { AdminPage, EmptyState } from "@/components/admin/admin-page";
+import { getAdminRepository } from "@/server/admin/repository";
+import { getSession } from "@/server/auth";
+import { SettingsEditor } from "@/components/admin/admin-controls";
+export default async function SettingsPage() { const [settings,session] = await Promise.all([getAdminRepository().getSettings(),getSession()]); const canWrite=session?.role==="owner"||session?.role==="admin"; return <AdminPage title="Settings" description="搜尋配額、影片長度、freshness 與排名門檻。"><div className="admin-panel">{settings.length?<table className="admin-table"><thead><tr><th>Topic</th><th>Freshness</th><th>候選 / Top N</th><th>影片長度</th><th>最低互動</th><th>排程</th></tr></thead><tbody>{settings.map(s=><tr key={s.topicId}><td>{s.topicId}</td><td>{s.freshnessDays} 天</td><td>{s.candidateLimit} / {s.topN}</td><td>{s.minDurationSeconds}–{s.maxDurationSeconds} 秒</td><td>{s.minEngagementScore}</td><td>{s.scheduleCron}</td></tr>)}</tbody></table>:<EmptyState>尚無主題搜尋設定。</EmptyState>}</div><SettingsEditor settings={settings} canWrite={canWrite}/></AdminPage>; }

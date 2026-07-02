@@ -1,0 +1,29 @@
+{
+  "name": "@ai-learning-radar/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:e2e": "vitest run tests/e2e",
+    "typecheck": "tsc --noEmit",
+    "admin:hash-password": "node scripts/hash-password.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.10.0",
+    "@ai-learning-radar/shared": "*",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,0 +1,60 @@
+name: Ingest Daily Videos
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingest-daily
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+    inputs:
+      topic_id:
+        description: Optional topic UUID
+        required: false
+        type: string
+      dry_run:
+        description: Run without database writes
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+      LLM_MODEL: ${{ vars.LLM_MODEL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      TOPIC_ID: ${{ inputs.topic_id }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install worker
+        run: pip install -e './workers/ingestion[dev]'
+      - name: Test worker
+        run: |
+          pytest workers/ingestion/tests -q
+          ruff check workers/ingestion
+      - name: Validate configuration
+        run: python -m ai_learning_radar_worker.cli validate-config
+      - name: Run daily ingestion
+        shell: bash
+        run: |
+          args=(daily)
+          if [[ -n "$TOPIC_ID" ]]; then args+=(--topic-id "$TOPIC_ID"); fi
+          if [[ "$DRY_RUN" == "true" ]]; then args+=(--dry-run); fi
+          python -m ai_learning_radar_worker.cli "${args[@]}"

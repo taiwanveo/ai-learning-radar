@@ -1,0 +1,38 @@
+name: Web CI
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/shared/**"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck shared contracts and web
+        run: |
+          npm run typecheck --workspace @ai-learning-radar/shared
+          npm run typecheck --workspace @ai-learning-radar/web
+      - name: Run unit and integration tests
+        run: |
+          npm run test --workspace @ai-learning-radar/shared
+          npm run test --workspace @ai-learning-radar/web
+      - run: npm run build --workspace @ai-learning-radar/web

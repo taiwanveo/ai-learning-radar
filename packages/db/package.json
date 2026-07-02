@@ -1,0 +1,25 @@
+{
+  "name": "@ai-learning-radar/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:test": "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_learning_radar prisma validate && node scripts/validate-migration.mjs",
+    "db:seed": "node seed/seed.mjs",
+    "db:seed:demo": "npm run db:seed && node seed/demo-seed.mjs",
+    "db:seed:demo:test": "node seed/demo-seed.mjs --check",
+    "db:seed:test": "node seed/seed.mjs --check",
+    "db:validate": "prisma validate",
+    "test": "npm run db:migrate:test && npm run db:seed:test",
+    "typecheck": "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_learning_radar prisma validate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.10.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.10.0"
+  }
+}
