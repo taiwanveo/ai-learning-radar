@@ -15,6 +15,8 @@
 | `AgentWorkflow.md` | 如何用 Codex、Claude Code、Cursor、GitHub Copilot 以多 Agent 模式協作。 |
 | `Deployment.md` | 免費雲端部署建議、環境變數、排程、備份與成本風險。 |
 | `Runbook.md` | 日常維運、失敗排查、資料修正與回復流程。 |
+| `AdminGuide.md` | 系統管理者的管理後台（Admin Console）詳細使用說明書。 |
+| `UserGuide.md` | 一般使用者的前台功能詳細使用說明書。 |
 | `References.md` | 本文件集使用到的官方或重要參考來源。 |
 
 ## 建議開發順序
