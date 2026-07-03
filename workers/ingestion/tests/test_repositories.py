@@ -155,6 +155,30 @@ def test_snapshot_replaces_ranked_items_in_one_transaction(
     assert inserts[1][2:] == (2, 0.1)
 
 
+def test_metadata_summary_replaces_previous_metadata_summary(
+    repository: tuple[PostgresRepository, FakeConnection],
+) -> None:
+    repo, connection = repository
+    repo.save_summary(
+        IDS[10],
+        None,
+        prompt_version="2026-07-03.1",
+        provider="mock",
+        model_id="mock-model",
+        summary={
+            "suitable_for": "初學者",
+            "short_summary": "摘要",
+            "full_summary": "完整摘要",
+            "transcript_summary": None,
+            "learning_objectives": ["目標一", "目標二", "目標三"],
+            "key_concepts": ["RAG"],
+        },
+    )
+
+    sql = " ".join(statement for statement, _ in connection.statements)
+    assert "transcript_id IS NULL" in sql
+
+
 def test_run_and_event_logging(repository: tuple[PostgresRepository, FakeConnection]) -> None:
     repo, connection = repository
     run_id = repo.create_run("test", {"dry_run": True})

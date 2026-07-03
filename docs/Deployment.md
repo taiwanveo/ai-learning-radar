@@ -53,6 +53,8 @@ YOUTUBE_API_KEY=...
 WORKER_TRIGGER_SECRET=...
 LLM_PROVIDER=openai
 LLM_MODEL=<provider-model-id>
+TRANSCRIPT_MODE=disabled
+QUIZ_ENABLED=false
 # Set only the selected provider's secret:
 OPENAI_API_KEY=...
 # GEMINI_API_KEY=...
@@ -182,24 +184,21 @@ npm run db:seed:demo
 為 fixture。正式匯入完成後應移除 `source_type = 'manual'` 且
 `source_content_id LIKE 'demo-ai-radar-%'` 的示範紀錄，避免與真實排名混用。
 
-## 6. 資料保留策略
+## 6. Transcript 與測驗階段
 
-因 transcript 會佔用大量 DB 空間，MVP 需提供設定：
+目前內部試用採 metadata-only 模式：
 
 ```text
-TRANSCRIPT_RETENTION_MODE=full|summary_only|compressed
+TRANSCRIPT_MODE=disabled
+QUIZ_ENABLED=false
 ```
 
-建議第一版：
+此模式只使用 YouTube Data API 的標題、說明、頻道與統計資料進行分類、
+排名及摘要，不呼叫 `youtube-transcript-api`，也不產生測驗。
 
-- 存完整 transcript。
-- 同時存 transcript_summary。
-- 提供管理命令壓縮或清理舊 transcript。
-
-未來正式版：
-
-- transcript 存 object storage。
-- PostgreSQL 存摘要、hash、索引與 metadata。
+若內部試用後決定啟用逐字稿與測驗，再設定
+`TRANSCRIPT_MODE=required`、`QUIZ_ENABLED=true`，並提供可用的 transcript
+網路路徑（例如 residential proxy）。逐字稿功能程式碼會保留，但目前不啟用。
 
 ## 7. BYOK 加密部署
 

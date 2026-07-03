@@ -2,8 +2,8 @@
 
 # ruff: noqa: E501 -- Prompt wording is versioned and line breaks affect snapshots.
 
-CLASSIFIER_PROMPT_VERSION = "2026-07-02.1"
-SUMMARY_PROMPT_VERSION = "2026-07-02.1"
+CLASSIFIER_PROMPT_VERSION = "2026-07-03.1"
+SUMMARY_PROMPT_VERSION = "2026-07-03.1"
 QUIZ_PROMPT_VERSION = "2026-07-02.1"
 LEARNING_PATH_PROMPT_VERSION = "2026-07-02.1"
 REPAIR_PROMPT_VERSION = "2026-07-02.1"
@@ -21,17 +21,20 @@ CLASSIFIER_PROMPT = """你是企業培訓內容策展員。判斷影片是否為
 指定主題：{topic_name}
 主題關鍵字：{topic_keywords}
 規則特徵：{rule_signals_json}
-Transcript 片段：{transcript_excerpt}"""
+分析來源：{source_kind}
+來源內容：{source_text}"""
 
-SUMMARY_PROMPT = """你是企業培訓講師與教學內容策展員。產生適合對象、短摘要、完整摘要、逐字稿摘要、3 至 5 點學習目標、3 至 8 個關鍵概念與限制。
-短摘要 100 至 200 字，完整摘要 500 至 800 字，逐字稿摘要 300 至 500 字。
+SUMMARY_PROMPT = """你是企業培訓講師與教學內容策展員。產生適合對象、短摘要、完整摘要、3 至 5 點學習目標、3 至 8 個關鍵概念與限制。
+短摘要 100 至 200 字，完整摘要 200 至 800 字。只能根據提供的來源內容摘要；資料不足時必須在 limitations_or_cautions 明確說明。
+只有分析來源為 Transcript 時才能產生 transcript_summary（300 至 500 字）；其他來源必須輸出 null。
 {common}
 標題：{title}
 描述：{description}
 頻道：{channel_title}
 主題：{topic_name}
 難度：{difficulty}
-Transcript：{transcript_text}"""
+分析來源：{source_kind}
+來源內容：{source_text}"""
 
 QUIZ_PROMPT = """你是企業培訓測驗設計師。設計 comprehension、application、concept 各一題且依此順序。每題四個 A/B/C/D 選項且只有一個正解；解析須簡短；evidence_text 必須出自 Transcript 且不超過 80 字。
 {common}

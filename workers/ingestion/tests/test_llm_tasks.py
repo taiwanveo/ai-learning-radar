@@ -96,7 +96,8 @@ def test_classify_validates_and_records_prompt_version() -> None:
         topic_name="人工智慧",
         topic_keywords=["RAG"],
         rule_signals={"has_steps": True},
-        transcript_excerpt="先介紹 RAG，再逐步操作。",
+        source_kind="影片標題與說明",
+        source_text="示範 RAG 流程。",
     )
     assert result.value.is_tutorial
     assert result.prompt_version == CLASSIFIER_PROMPT_VERSION
@@ -110,7 +111,8 @@ def test_summarize_validates_output() -> None:
         channel_title="頻道",
         topic_name="AI",
         difficulty="beginner",
-        transcript_text="逐字稿",
+        source_kind="影片標題與說明",
+        source_text="示範 RAG 流程。",
     )
     assert result.prompt_version == SUMMARY_PROMPT_VERSION
     assert len(result.value.learning_objectives) == 3
@@ -147,7 +149,8 @@ def test_invalid_output_is_repaired_exactly_once() -> None:
         topic_name="AI",
         topic_keywords=["RAG"],
         rule_signals={},
-        transcript_excerpt="教學",
+        source_kind="影片標題與說明",
+        source_text="教學",
     )
     assert result.repaired
     assert result.repair_prompt_version == REPAIR_PROMPT_VERSION
@@ -168,6 +171,7 @@ def test_second_invalid_output_raises_without_third_call() -> None:
             topic_name="AI",
             topic_keywords=["RAG"],
             rule_signals={},
-            transcript_excerpt="教學",
+            source_kind="影片標題與說明",
+            source_text="教學",
         )
     assert len(provider.calls) == 2

@@ -116,7 +116,8 @@ class LLMTaskRunner:
         topic_name: str,
         topic_keywords: list[str],
         rule_signals: dict[str, Any],
-        transcript_excerpt: str,
+        source_kind: str,
+        source_text: str,
     ) -> TaskResult[ClassificationResult]:
         prompt = CLASSIFIER_PROMPT.format(
             common=COMMON,
@@ -128,7 +129,8 @@ class LLMTaskRunner:
             topic_name=topic_name,
             topic_keywords=_json(topic_keywords),
             rule_signals_json=_json(rule_signals),
-            transcript_excerpt=transcript_excerpt,
+            source_kind=source_kind,
+            source_text=source_text,
         )
         return self._run(
             prompt=prompt,
@@ -144,7 +146,8 @@ class LLMTaskRunner:
         channel_title: str,
         topic_name: str,
         difficulty: str,
-        transcript_text: str,
+        source_kind: str,
+        source_text: str,
     ) -> TaskResult[SummaryResult]:
         prompt = SUMMARY_PROMPT.format(
             common=COMMON,
@@ -153,7 +156,8 @@ class LLMTaskRunner:
             channel_title=channel_title,
             topic_name=topic_name,
             difficulty=difficulty,
-            transcript_text=transcript_text,
+            source_kind=source_kind,
+            source_text=source_text,
         )
         return self._run(
             prompt=prompt,

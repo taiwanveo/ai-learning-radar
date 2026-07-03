@@ -14,6 +14,8 @@ def clear_worker_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         "YOUTUBE_API_KEY",
         "LLM_MODEL",
         "LLM_PROVIDER",
+        "TRANSCRIPT_MODE",
+        "QUIZ_ENABLED",
         *PROVIDER_KEYS.values(),
     )
     for name in names:
@@ -43,3 +45,18 @@ def test_configuration_and_youtube_url_parsing():
     assert configuration_errors(environment) == []
     assert extract_youtube_video_id("https://www.youtube.com/watch?v=abc_123-xyz") == "abc_123-xyz"
     assert extract_youtube_video_id("https://youtu.be/abc123") == "abc123"
+
+
+def test_quiz_requires_transcripts() -> None:
+    environment = {
+        "DATABASE_URL": "postgresql://example",
+        "YOUTUBE_API_KEY": "youtube-key",
+        "LLM_PROVIDER": "openrouter",
+        "LLM_MODEL": "openai/gpt-4o-mini",
+        "OPENROUTER_API_KEY": "router-key",
+        "TRANSCRIPT_MODE": "disabled",
+        "QUIZ_ENABLED": "true",
+    }
+    assert configuration_errors(environment) == [
+        "QUIZ_ENABLED requires TRANSCRIPT_MODE=required"
+    ]

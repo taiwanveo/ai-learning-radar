@@ -29,6 +29,14 @@ PROVIDER_KEYS = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
 }
+TRANSCRIPT_MODES = {"disabled", "required"}
+
+
+def _enabled(environment: Mapping[str, str], name: str, *, default: bool) -> bool:
+    value = environment.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -62,6 +70,12 @@ def configuration_errors(environment: Mapping[str, str] | None = None) -> list[s
         errors.append(f"unsupported LLM_PROVIDER: {provider}")
     elif not env.get(key_name, "").strip():
         errors.append(f"missing {key_name} for {provider}")
+    transcript_mode = env.get("TRANSCRIPT_MODE", "disabled").strip().lower()
+    if transcript_mode not in TRANSCRIPT_MODES:
+        errors.append(f"unsupported TRANSCRIPT_MODE: {transcript_mode}")
+    quiz_enabled = _enabled(env, "QUIZ_ENABLED", default=False)
+    if quiz_enabled and transcript_mode != "required":
+        errors.append("QUIZ_ENABLED requires TRANSCRIPT_MODE=required")
     return errors
 
 
@@ -77,6 +91,17 @@ def build_llm_runner(environment: Mapping[str, str] | None = None) -> LLMTaskRun
         "openrouter": OpenRouterProvider,
     }
     return LLMTaskRunner(providers[provider_name](api_key), model=env["LLM_MODEL"])
+
+
+def build_transcript_adapter(
+    environment: Mapping[str, str] | None = None,
+) -> YouTubeTranscriptAdapter | None:
+    env = environment or os.environ
+    return (
+        YouTubeTranscriptAdapter()
+        if env.get("TRANSCRIPT_MODE", "disabled").strip().lower() == "required"
+        else None
+    )
 
 
 def _run_daily(args: argparse.Namespace) -> int:
@@ -99,9 +124,10 @@ def _run_daily(args: argparse.Namespace) -> int:
             return 2
         pipeline = DailyDigestPipeline(
             youtube=YouTubeAdapter(os.environ["YOUTUBE_API_KEY"]),
-            transcripts=YouTubeTranscriptAdapter(),
+            transcripts=build_transcript_adapter(),
             llm=build_llm_runner(),
             repository=repository,
+            quiz_enabled=_enabled(os.environ, "QUIZ_ENABLED", default=False),
         )
         report = pipeline.run(topics, dry_run=args.dry_run, trigger="scheduled")
     print(json.dumps(report.as_dict(), ensure_ascii=False, default=str))
@@ -182,9 +208,10 @@ def _run_test_video(args: argparse.Namespace) -> int:
             return 2
         pipeline = DailyDigestPipeline(
             youtube=_SingleVideoAdapter(youtube, metadata[0]),  # type: ignore[arg-type]
-            transcripts=YouTubeTranscriptAdapter(),
+            transcripts=build_transcript_adapter(),
             llm=build_llm_runner(),
             repository=repository,
+            quiz_enabled=_enabled(os.environ, "QUIZ_ENABLED", default=False),
         )
         report = pipeline.run([topics[0]], trigger="test")
     print(json.dumps(report.as_dict(), ensure_ascii=False, default=str))

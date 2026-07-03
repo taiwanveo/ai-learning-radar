@@ -356,7 +356,7 @@ class PostgresRepository:
     def save_summary(
         self,
         content_item_id: UUID,
-        transcript_id: UUID,
+        transcript_id: UUID | None,
         *,
         prompt_version: str,
         provider: str,
@@ -364,6 +364,15 @@ class PostgresRepository:
         summary: Mapping[str, Any],
     ) -> UUID:
         with self._connection.transaction():
+            if transcript_id is None:
+                self._connection.execute(
+                    """
+                    DELETE FROM content_summaries
+                    WHERE content_item_id = %s AND transcript_id IS NULL
+                      AND prompt_version = %s AND provider = %s AND model_id = %s
+                    """,
+                    (content_item_id, prompt_version, provider, model_id),
+                )
             cursor = self._connection.execute(
                 """
                 INSERT INTO content_summaries

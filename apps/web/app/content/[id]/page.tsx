@@ -22,7 +22,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
           <div className="detail-copy"><section><h2>完整摘要</h2><p>{item.fullSummary}</p></section><section><h2>學習目標</h2><ol>{item.learningObjectives.map((objective) => <li key={objective}>{objective}</li>)}</ol></section>{item.transcriptSummary ? <section><h2>Transcript 摘要</h2><p>{item.transcriptSummary}</p></section> : null}{item.limitationsOrCautions ? <section className="caution-box"><h2>限制與注意事項</h2><p>{item.limitationsOrCautions}</p></section> : null}</div>
         </div>
       </article>
-      {item.quiz ? <Quiz quiz={item.quiz} /> : <section className="empty-state"><h2>測驗準備中</h2><p>這支內容目前尚未建立測驗。</p></section>}
+      {item.quiz ? <Quiz quiz={item.quiz} /> : <section className="empty-state"><h2>測驗功能規劃中</h2><p>目前版本先提供影片分類、排名與摘要；測驗將在後續階段推出。</p></section>}
     </main>
   );
 }

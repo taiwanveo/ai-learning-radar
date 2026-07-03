@@ -76,7 +76,9 @@ class PipelineRepository(Protocol):
         self, content_item_id: UUID, topic_id: UUID, classification: Mapping[str, Any]
     ) -> None: ...
 
-    def save_summary(self, content_item_id: UUID, transcript_id: UUID, **kwargs: Any) -> UUID: ...
+    def save_summary(
+        self, content_item_id: UUID, transcript_id: UUID | None, **kwargs: Any
+    ) -> UUID: ...
 
     def save_quiz(self, content_item_id: UUID, **kwargs: Any) -> UUID: ...
 
@@ -129,10 +131,11 @@ class DailyDigestPipeline:
         self,
         *,
         youtube: YouTubeAdapter,
-        transcripts: YouTubeTranscriptAdapter,
+        transcripts: YouTubeTranscriptAdapter | None,
         llm: LLMTaskRunner,
         repository: PipelineRepository,
         scoring_config: ScoringConfig | None = None,
+        quiz_enabled: bool = True,
         now: datetime | None = None,
     ) -> None:
         self.youtube = youtube
@@ -140,6 +143,7 @@ class DailyDigestPipeline:
         self.llm = llm
         self.repository = repository
         self.scoring_config = scoring_config or ScoringConfig()
+        self.quiz_enabled = quiz_enabled
         self.now = now or datetime.now(UTC)
         if self.now.tzinfo is None or self.now.utcoffset() is None:
             raise ValueError("pipeline now must be timezone-aware")
@@ -355,31 +359,38 @@ class DailyDigestPipeline:
                 self.repository.mark_filtered(content_id, reason)
             return None
 
-        try:
-            transcript = self.transcripts.fetch(item.video_id)
-        except TranscriptUnavailableError:
-            if not dry_run:
-                self.repository.mark_filtered(content_id, "transcript_unavailable")
-            raise
-        self._event(
-            report,
-            dry_run,
-            "transcript",
-            "info",
-            "transcript retrieved",
-            topic_id,
-            content_item_id=content_id,
-            data={"language": transcript.language},
-        )
-        transcript_id = uuid5(NAMESPACE_URL, f"transcript:{transcript.transcript_hash}")
-        if not dry_run:
-            transcript_id = self.repository.save_transcript(
-                content_id,
-                transcript.language,
-                transcript.source,
-                transcript.text,
-                transcript.transcript_hash,
+        transcript = None
+        transcript_id = None
+        source_kind = "影片標題與說明"
+        source_text = item.description.strip() or "影片沒有提供說明。"
+        if self.transcripts is not None:
+            try:
+                transcript = self.transcripts.fetch(item.video_id)
+            except TranscriptUnavailableError:
+                if not dry_run:
+                    self.repository.mark_filtered(content_id, "transcript_unavailable")
+                raise
+            self._event(
+                report,
+                dry_run,
+                "transcript",
+                "info",
+                "transcript retrieved",
+                topic_id,
+                content_item_id=content_id,
+                data={"language": transcript.language},
             )
+            source_kind = "Transcript"
+            source_text = transcript.text
+            transcript_id = uuid5(NAMESPACE_URL, f"transcript:{transcript.transcript_hash}")
+            if not dry_run:
+                transcript_id = self.repository.save_transcript(
+                    content_id,
+                    transcript.language,
+                    transcript.source,
+                    transcript.text,
+                    transcript.transcript_hash,
+                )
         classification_result = self.llm.classify(
             title=item.title,
             description=item.description,
@@ -389,7 +400,8 @@ class DailyDigestPipeline:
             topic_name=str(topic["name"]),
             topic_keywords=[str(keyword["keyword"]) for keyword in topic["keywords"]],
             rule_signals={},
-            transcript_excerpt=transcript.text[:6000],
+            source_kind=source_kind,
+            source_text=source_text[:6000],
         )
         classification = classification_result.value.model_dump()
         if not dry_run:
@@ -406,15 +418,18 @@ class DailyDigestPipeline:
             channel_title=item.channel_title,
             topic_name=str(topic["name"]),
             difficulty=str(classification["difficulty"]),
-            transcript_text=transcript.text,
+            source_kind=source_kind,
+            source_text=source_text,
         )
         summary = summary_result.value.model_dump()
-        quiz_result = self.llm.quiz(
-            title=item.title,
-            short_summary=str(summary["short_summary"]),
-            learning_objectives=list(summary["learning_objectives"]),
-            transcript_text=transcript.text,
-        )
+        quiz_result = None
+        if self.quiz_enabled and transcript is not None:
+            quiz_result = self.llm.quiz(
+                title=item.title,
+                short_summary=str(summary["short_summary"]),
+                learning_objectives=list(summary["learning_objectives"]),
+                transcript_text=transcript.text,
+            )
         if not dry_run:
             self.repository.save_summary(
                 content_id,
@@ -424,13 +439,14 @@ class DailyDigestPipeline:
                 model_id=summary_result.model,
                 summary=summary,
             )
-            self.repository.save_quiz(
-                content_id,
-                prompt_version=quiz_result.prompt_version,
-                provider=quiz_result.provider,
-                model_id=quiz_result.model,
-                questions=[question.model_dump() for question in quiz_result.value.questions],
-            )
+            if quiz_result is not None:
+                self.repository.save_quiz(
+                    content_id,
+                    prompt_version=quiz_result.prompt_version,
+                    provider=quiz_result.provider,
+                    model_id=quiz_result.model,
+                    questions=[question.model_dump() for question in quiz_result.value.questions],
+                )
             if bool(settings["auto_publish"]):
                 self.repository.publish_content(content_id)
         report.analyzed += 1
@@ -441,7 +457,8 @@ class DailyDigestPipeline:
             dry_run,
             "analysis",
             "info",
-            "classification, summary and quiz completed",
+            "classification and summary completed"
+            + (" with quiz" if quiz_result is not None else ""),
             topic_id,
             content_item_id=content_id,
         )

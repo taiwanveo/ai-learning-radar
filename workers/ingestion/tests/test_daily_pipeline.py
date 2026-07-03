@@ -218,3 +218,25 @@ def test_dry_run_performs_no_repository_writes() -> None:
 
     assert report.status == "partial_failed"
     assert repository.calls == []
+
+
+def test_metadata_only_pipeline_skips_transcripts_and_quizzes() -> None:
+    repository = FakeRepository()
+    pipeline = DailyDigestPipeline(
+        youtube=FakeYouTube(),  # type: ignore[arg-type]
+        transcripts=None,
+        llm=FakeLLM(),  # type: ignore[arg-type]
+        repository=repository,  # type: ignore[arg-type]
+        quiz_enabled=False,
+        now=NOW,
+    )
+
+    report = pipeline.run([topic()], trigger="test")
+
+    assert report.status == "succeeded"
+    assert report.analyzed == 3
+    assert report.failed == 0
+    assert report.transcript_unavailable == 0
+    assert "save_transcript" not in repository.calls
+    assert "save_summary" in repository.calls
+    assert "save_quiz" not in repository.calls

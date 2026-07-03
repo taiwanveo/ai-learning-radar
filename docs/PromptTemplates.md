@@ -70,8 +70,9 @@
 指定主題：{{topic_name}}
 主題關鍵字：{{topic_keywords}}
 規則特徵：{{rule_signals_json}}
-Transcript 片段：
-{{transcript_excerpt}}
+分析來源：{{source_kind}}
+來源內容：
+{{source_text}}
 ```
 
 ### 2.4 JSON Schema
@@ -106,8 +107,8 @@ difficulty: beginner | normal
 
 - 適合誰。
 - 首頁短摘要，100 到 200 個中文字。
-- 詳情頁完整摘要，500 到 800 個中文字。
-- Transcript 摘要，300 到 500 個中文字。
+- 詳情頁完整摘要，200 到 800 個中文字。
+- Transcript 摘要僅在來源為 Transcript 時產生；metadata-only 模式輸出 null。
 - 學習目標 3 到 5 點。
 - 關鍵概念 tags。
 
@@ -119,22 +120,23 @@ difficulty: beginner | normal
 {{channel_title}}
 {{topic_name}}
 {{difficulty}}
-{{transcript_text}}
+{{source_kind}}
+{{source_text}}
 ```
 
 ### 3.3 Prompt
 
 ```text
-你是企業培訓講師與教學內容策展員。請根據以下 YouTube 教學影片 transcript 與 metadata，為「AI Learning Radar」產生繁體中文學習摘要。
+你是企業培訓講師與教學內容策展員。請根據指定的分析來源，為「AI Learning Radar」產生繁體中文學習摘要。
 
 要求：
-1. 不要捏造 transcript 沒有提到的內容。
-2. 不要輸出完整逐字稿。
+1. 不要捏造分析來源沒有提到的內容。
+2. 資料不足時，必須在 limitations_or_cautions 明確說明。
 3. 摘要要幫助學員判斷「這支影片值不值得看」與「看完會學到什麼」。
 4. 語氣專業、清楚、適合企業內訓平台。
 5. 短摘要 100 到 200 個中文字。
-6. 完整摘要 500 到 800 個中文字。
-7. Transcript 摘要 300 到 500 個中文字。
+6. 完整摘要 200 到 800 個中文字。
+7. 只有分析來源為 Transcript 時產生 300 到 500 字的 transcript_summary；其他來源輸出 null。
 8. 學習目標 3 到 5 點。
 9. 關鍵概念 tags 3 到 8 個，盡量使用中英混合技術詞，例如 LLM、RAG、Prompt Engineering。
 10. suitable_for 請寫成一句話，例如：「適合剛開始接觸生成式 AI、想建立基本觀念的學員。」
@@ -147,8 +149,9 @@ difficulty: beginner | normal
 頻道：{{channel_title}}
 主題：{{topic_name}}
 難度：{{difficulty}}
-Transcript：
-{{transcript_text}}
+分析來源：{{source_kind}}
+來源內容：
+{{source_text}}
 ```
 
 ### 3.4 JSON Schema
@@ -157,8 +160,8 @@ Transcript：
 {
   "suitable_for": "適合誰，一句話",
   "short_summary": "100 到 200 個中文字",
-  "full_summary": "500 到 800 個中文字",
-  "transcript_summary": "300 到 500 個中文字",
+  "full_summary": "200 到 800 個中文字",
+  "transcript_summary": null,
   "learning_objectives": [
     "學習目標 1",
     "學習目標 2",
@@ -170,6 +173,9 @@ Transcript：
 ```
 
 ## 4. 測驗生成
+
+目前內部試用階段設定 `QUIZ_ENABLED=false`，本節保留供未來啟用
+Transcript 後使用；metadata-only 模式不執行此任務。
 
 ### 4.1 Task
 
@@ -354,4 +360,3 @@ repair_prompt_version = 2026-07-02.1
 2. 更新 `PromptTemplates.md`。
 3. 更新測試 fixture。
 4. 在 PR 說明是否需要重跑既有內容。
-

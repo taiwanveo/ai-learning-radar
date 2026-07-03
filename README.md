@@ -53,7 +53,9 @@ analysis, score candidates, and persist a daily snapshot. Before a real run:
 
 1. Create a PostgreSQL database and copy `.env.example` to a private `.env`.
 2. Set `DATABASE_URL`, `YOUTUBE_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, and the
-   selected provider API key.
+   selected provider API key. The current production mode uses
+   `TRANSCRIPT_MODE=disabled` and `QUIZ_ENABLED=false`; summaries are generated
+   only from YouTube titles and descriptions.
 3. Apply and seed the database:
 
 ```bash
