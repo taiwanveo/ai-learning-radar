@@ -44,7 +44,7 @@ class SummaryResult(ContractModel):
     suitable_for: NonEmptyText
     short_summary: Annotated[str, Field(min_length=100, max_length=200)]
     full_summary: Annotated[str, Field(min_length=200, max_length=800)]
-    transcript_summary: Annotated[str, Field(min_length=300, max_length=500)] | None = None
+    transcript_summary: Annotated[str, Field(min_length=300, max_length=500)] | None
     learning_objectives: Annotated[list[NonEmptyText], Field(min_length=3, max_length=5)]
     key_concepts: Annotated[list[NonEmptyText], Field(min_length=3, max_length=8)]
     limitations_or_cautions: str

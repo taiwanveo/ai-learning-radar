@@ -92,6 +92,13 @@ def test_all_prompt_contracts_and_pipeline_model_validate() -> None:
     assert path.recommended_order[2].rank == 3
 
 
+def test_metadata_summary_requires_explicit_null_for_strict_output() -> None:
+    schema = SummaryResult.model_json_schema()
+
+    assert "transcript_summary" in schema["required"]
+    assert {"type": "null"} in schema["properties"]["transcript_summary"]["anyOf"]
+
+
 @pytest.mark.parametrize(
     ("model", "data"),
     [
