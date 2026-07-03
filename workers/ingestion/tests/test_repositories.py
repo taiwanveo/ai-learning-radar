@@ -58,9 +58,6 @@ class FakeConnection:
         self.statements.append((normalized, params))
         return FakeCursor((next(self._ids),)) if "RETURNING id" in normalized else FakeCursor()
 
-    def executemany(self, query: str, params_seq: Any) -> None:
-        self.statements.append((" ".join(query.split()), list(params_seq)))
-
     def transaction(self) -> FakeTransaction:
         return FakeTransaction(self)
 
@@ -154,8 +151,8 @@ def test_snapshot_replaces_ranked_items_in_one_transaction(
         for sql, params in connection.statements
         if "INSERT INTO daily_digest_items" in sql
     ]
-    assert inserts[0][0][2:] == (1, 0.2)
-    assert inserts[0][1][2:] == (2, 0.1)
+    assert inserts[0][2:] == (1, 0.2)
+    assert inserts[1][2:] == (2, 0.1)
 
 
 def test_run_and_event_logging(repository: tuple[PostgresRepository, FakeConnection]) -> None:

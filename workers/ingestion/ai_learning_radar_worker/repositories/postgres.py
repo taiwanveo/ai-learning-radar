@@ -24,8 +24,6 @@ class TransactionContext(Protocol):
 class DatabaseConnection(Protocol):
     def execute(self, query: str, params: Sequence[Any] | None = None) -> ResultCursor: ...
 
-    def executemany(self, query: str, params_seq: Iterable[Sequence[Any]]) -> Any: ...
-
     def transaction(self) -> TransactionContext: ...
 
 
@@ -38,6 +36,15 @@ def _required_id(cursor: ResultCursor, operation: str) -> UUID:
     if row is None:
         raise RuntimeError(f"{operation} did not return an id")
     return UUID(str(row[0]))
+
+
+def _execute_many(
+    connection: DatabaseConnection,
+    query: str,
+    params_seq: Iterable[Sequence[Any]],
+) -> None:
+    for params in params_seq:
+        connection.execute(query, params)
 
 
 class PostgresRepository:
@@ -387,7 +394,8 @@ class PostgresRepository:
                 "DELETE FROM learning_objectives WHERE content_item_id = %s",
                 (content_item_id,),
             )
-            self._connection.executemany(
+            _execute_many(
+                self._connection,
                 """
                 INSERT INTO learning_objectives (content_item_id, objective_text, sort_order)
                 VALUES (%s, %s, %s)
@@ -471,7 +479,8 @@ class PostgresRepository:
                     ),
                 )
                 question_id = _required_id(question_cursor, "save_quiz_question")
-                self._connection.executemany(
+                _execute_many(
+                    self._connection,
                     """
                     INSERT INTO quiz_options (question_id, option_key, option_text)
                     VALUES (%s, %s, %s)
@@ -546,7 +555,8 @@ class PostgresRepository:
             self._connection.execute(
                 "DELETE FROM daily_digest_items WHERE snapshot_id = %s", (snapshot_id,)
             )
-            self._connection.executemany(
+            _execute_many(
+                self._connection,
                 """
                 INSERT INTO daily_digest_items (snapshot_id, content_item_id, rank, score)
                 VALUES (%s, %s, %s, %s)

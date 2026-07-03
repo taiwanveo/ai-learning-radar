@@ -67,7 +67,7 @@ try {
     } else {
       console.log("Owner admin skipped; provide the three ADMIN_OWNER_* variables to create one.");
     }
-  });
+  }, { maxWait: 10_000, timeout: 60_000 });
   console.log("Default AI taxonomy and search settings seeded.");
 } finally {
   await prisma.$disconnect();
