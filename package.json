@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": ["apps/web", "packages/db", "packages/shared"],
   "scripts": {
+    "vercel-build": "npm run db:generate --workspace @ai-learning-radar/db && npm run build --workspace @ai-learning-radar/web",
     "build": "npm run build --workspace @ai-learning-radar/web",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
