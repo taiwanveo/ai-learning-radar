@@ -27,6 +27,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Generate Prisma client
+        run: npm run db:generate --workspace @ai-learning-radar/db
       - name: Typecheck shared contracts and web
         run: |
           npm run typecheck --workspace @ai-learning-radar/shared
