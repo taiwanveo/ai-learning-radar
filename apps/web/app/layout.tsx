@@ -8,10 +8,13 @@ export const metadata: Metadata = {
   description: "每天精選值得投入時間的中文 AI 教學內容",
 };
 
+const themeInitScript = `(function(){var t;try{t=localStorage.getItem("radar-theme")}catch(e){}if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.dataset.theme=t})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="zh-Hant">
+    <html lang="zh-Hant" suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <SiteHeader />
         {children}
         <footer className="site-footer">

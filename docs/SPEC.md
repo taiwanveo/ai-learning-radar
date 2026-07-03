@@ -42,7 +42,12 @@ q=RAG（由 /search 頁面處理）
 
 #### Acceptance criteria
 
-- 桌面版 4 欄，平板 2 欄，手機 1 欄。
+- 影音網站式（video-first）版面：進站不需捲動即可看到搜尋列、篩選列與影片縮圖牆，
+  首頁不放大段文字說明。
+- 全站 header 內建搜尋列，送出導向 `/search`。
+- 支援亮色與暗色兩種主題：預設跟隨系統 `prefers-color-scheme`，header 提供切換按鈕，
+  選擇記錄於 `localStorage`（key：`radar-theme`）。
+- 桌面版 4 欄（寬 ≤1280px 為 3 欄），平板 2 欄，手機 1 欄。
 - 沒有符合資料時顯示空狀態，不報錯。
 - 點擊影片縮圖或按鈕可開新分頁前往 YouTube。
 - 點擊詳情可進入內容詳情頁。

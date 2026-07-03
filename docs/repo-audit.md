@@ -80,3 +80,19 @@ web/shared/worker 全數測試、typecheck 與 production build 均通過。
 - `SPEC.md`：admin API 路徑改為實作的 `auth/*`、`llm/*` 版本；digest query 參數與
   topic slug 範例對齊 seed 資料；學習指引回傳欄位對齊 `learningPathResponseSchema`；
   註記 `/admin/login` 的 route group 結構。
+
+## v1.1 UI redesign（2026-07-03）
+
+依產品負責人回饋（首頁不應以大段文字開場、要一眼看出是影音網站、需要
+亮暗雙主題），參考 YouTube 與 GanJing World 重新設計前台：
+
+- **Video-first 版面**：移除首頁文字 hero，改為「header 搜尋列 → 一行式
+  今日資訊列 → 篩選列 → 影片縮圖牆」，進站零捲動即見內容。
+- **雙主題系統**：`globals.css` 全面改為 CSS custom property tokens，
+  `<html data-theme="light|dark">` 切換；預設跟隨系統、選擇存
+  `localStorage`（`radar-theme`），layout 內嵌 script 防止載入閃爍（FOUC）。
+  暗色主題為深墨綠底＋雷達綠 accent 的未來感視覺。
+- **影音平台式卡片**：標題優先、頻道／觀看數／日期一行、縮圖 hover 放大
+  ＋播放鍵浮現、排名徽章；無縮圖時顯示雷達波紋佔位動畫。
+- Admin 介面維持獨立亮色樣式，不受前台主題影響。
+- 以 Playwright 截圖驗證亮／暗／手機三種版面。

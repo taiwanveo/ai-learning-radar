@@ -1,5 +1,5 @@
 .shell { display: grid; min-height: 75vh; padding: 2rem; place-items: center; }
-.card { display: grid; width: min(430px, 100%); gap: 1rem; padding: 2rem; border: 1px solid #dce2dd; border-radius: 20px; background: #fffef9; box-shadow: 0 18px 45px rgb(24 47 39 / 8%); }
+.card { display: grid; width: min(430px, 100%); gap: 1rem; padding: 2rem; border: 1px solid #dce2dd; border-radius: 20px; background: #fffef9; box-shadow: 0 18px 45px rgb(24 47 39 / 8%); color: #17201d; }
 .card label { display: grid; gap: .4rem; font-weight: 600; }
 .card input, .card button { min-height: 46px; padding: .7rem .8rem; border: 1px solid #bdc8c1; border-radius: 8px; font: inherit; }
 .card button { border-color: #123f32; background: #123f32; color: white; cursor: pointer; }
