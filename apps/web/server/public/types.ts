@@ -11,7 +11,7 @@ export const digestQuerySchema = z.object({
   date: z.string().date().optional(),
   sort: digestSortSchema.default("default"),
   difficulty: z.enum(["all", "beginner", "normal"]).default("all"),
-  language: z.string().trim().min(1).optional(),
+  language: z.preprocess((value) => (value === "" ? undefined : value), z.string().trim().min(1).optional()),
   published: z.enum(["all", "7d", "30d", "90d"]).default("all"),
   contentType: z.enum(["all", "video", "article"]).default("all"),
   recommended: z.enum(["all", "true", "false"]).default("all"),
