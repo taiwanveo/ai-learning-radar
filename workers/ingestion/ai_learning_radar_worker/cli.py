@@ -131,7 +131,7 @@ def _run_daily(args: argparse.Namespace) -> int:
         )
         report = pipeline.run(topics, dry_run=args.dry_run, trigger="scheduled")
     print(json.dumps(report.as_dict(), ensure_ascii=False, default=str))
-    return 0 if report.status in {"succeeded", "partial_failed"} else 1
+    return 0 if report.status == "succeeded" or report.analyzed > 0 else 1
 
 
 class _SingleVideoAdapter:
@@ -215,7 +215,7 @@ def _run_test_video(args: argparse.Namespace) -> int:
         )
         report = pipeline.run([topics[0]], trigger="test")
     print(json.dumps(report.as_dict(), ensure_ascii=False, default=str))
-    return 0 if report.status in {"succeeded", "partial_failed"} else 1
+    return 0 if report.status == "succeeded" or report.analyzed > 0 else 1
 
 
 def main(argv: Sequence[str] | None = None) -> int:

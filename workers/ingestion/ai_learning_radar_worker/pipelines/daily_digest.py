@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -338,7 +339,12 @@ class DailyDigestPipeline:
     ) -> _Processed | None:
         settings = topic["settings"]
         topic_id = UUID(str(topic["id"]))
-        reason = self._filter_reason(item, settings, policy)
+        reason = self._filter_reason(
+            item,
+            settings,
+            policy,
+            require_caption=self.transcripts is not None,
+        )
         fallback_id = uuid5(NAMESPACE_URL, f"youtube:{item.video_id}")
         channel_id: UUID | None = None
         if not dry_run and channel is not None:
@@ -478,6 +484,8 @@ class DailyDigestPipeline:
         item: VideoMetadata,
         settings: Mapping[str, Any],
         policy: Mapping[str, Any],
+        *,
+        require_caption: bool,
     ) -> str | None:
         if policy.get("list_type") == "blacklisted":
             return "blacklisted_channel"
@@ -487,7 +495,7 @@ class DailyDigestPipeline:
             return "duration_out_of_range"
         if item.view_count < int(settings["min_view_count"]):
             return "below_min_view_count"
-        if not item.caption_available:
+        if require_caption and not item.caption_available:
             return "caption_unavailable"
         return None
 
@@ -510,16 +518,31 @@ class DailyDigestPipeline:
         content_item_id: UUID | None = None,
         data: Mapping[str, Any] | None = None,
     ) -> None:
-        if not dry_run:
-            self.repository.log_event(
-                report.run_id,
-                phase,
-                level,
-                message,
-                topic_id=topic_id,
-                content_item_id=content_item_id,
-                data=data,
+        if dry_run:
+            print(
+                json.dumps(
+                    {
+                        "phase": phase,
+                        "level": level,
+                        "message": message,
+                        "topic_id": str(topic_id),
+                        "content_item_id": str(content_item_id) if content_item_id else None,
+                        "data": data,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                )
             )
+            return
+        self.repository.log_event(
+            report.run_id,
+            phase,
+            level,
+            message,
+            topic_id=topic_id,
+            content_item_id=content_item_id,
+            data=data,
+        )
 
     @staticmethod
     def _channel_record(channel: ChannelMetadata) -> dict[str, Any]:
