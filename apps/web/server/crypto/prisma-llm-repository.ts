@@ -19,7 +19,7 @@ export class PrismaLlmRepository implements LlmRepository {
 
   async listKeys() {
     const rows = await this.prisma.llmApiKey.findMany({ orderBy: { updatedAt: "desc" } });
-    return rows.map(keyRecord).filter((row): row is LlmKeyRecord => row !== null);
+    return rows.map((row: any) => keyRecord(row)).filter((row: LlmKeyRecord | null): row is LlmKeyRecord => row !== null);
   }
   async findKey(id: string) { return keyRecord(await this.prisma.llmApiKey.findUnique({ where: { id } })); }
   async createKey(input: CreateLlmKey) {
@@ -37,7 +37,7 @@ export class PrismaLlmRepository implements LlmRepository {
   }
   async listFallbackChains() {
     const rows = await this.prisma.llmModelSetting.findMany({ orderBy: [{ taskType: "asc" }, { priority: "asc" }] });
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       ...row,
       taskType: row.taskType as LlmTask,
       provider: row.provider as LlmModelSetting["provider"],

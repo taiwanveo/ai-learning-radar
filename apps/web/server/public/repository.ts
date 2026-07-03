@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import type { Decimal, JsonValue } from "@prisma/client/runtime/library";
 import { contentDetailSchema, publicDigestItemSchema, publicDigestResponseSchema } from "@/lib/schemas";
 import { demoContent } from "./demo-content";
 import type { ContentDetail, DigestItem, DigestQuery, DigestResponse, PublicData, SearchQuery } from "./types";
@@ -18,9 +19,13 @@ const contentInclude = {
       questions: { orderBy: { sortOrder: "asc" as const }, include: { options: true } },
     },
   },
-} satisfies Prisma.ContentItemInclude;
+} as const;
 
-type DatabaseContent = Prisma.ContentItemGetPayload<{ include: typeof contentInclude }>;
+function fetchContentItems(prisma: PrismaClient) {
+  return prisma.contentItem.findMany({ include: contentInclude });
+}
+
+type DatabaseContent = Awaited<ReturnType<typeof fetchContentItems>>[number];
 
 const globalPrisma = globalThis as unknown as { publicPrisma?: PrismaClient };
 
@@ -29,11 +34,11 @@ function database(): PrismaClient {
   return globalPrisma.publicPrisma;
 }
 
-function numeric(value: bigint | Prisma.Decimal | null | undefined): number {
+function numeric(value: bigint | Decimal | null | undefined): number {
   return value == null ? 0 : Number(value);
 }
 
-function rawString(raw: Prisma.JsonValue | undefined, key: string): string | null {
+function rawString(raw: JsonValue | undefined, key: string): string | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const value = raw[key];
   return typeof value === "string" && value.trim() ? value : null;
@@ -45,11 +50,11 @@ function toDetail(row: DatabaseContent): ContentDetail {
   const summary = row.summaries[0];
   const latestQuiz = row.quizzes[0];
   const optionKeys = ["A", "B", "C", "D"] as const;
-  const questions = latestQuiz?.questions.map((question) => ({
+  const questions = latestQuiz?.questions.map((question: any) => ({
     id: question.id,
     questionType: question.questionType as "comprehension" | "application" | "concept",
     questionText: question.questionText,
-    options: Object.fromEntries(optionKeys.map((key) => [key, question.options.find((option) => option.optionKey === key)?.optionText ?? key])) as Record<(typeof optionKeys)[number], string>,
+    options: Object.fromEntries(optionKeys.map((key) => [key, question.options.find((option: any) => option.optionKey === key)?.optionText ?? key])) as Record<(typeof optionKeys)[number], string>,
     correctOptionKey: question.correctOptionKey as (typeof optionKeys)[number],
     explanation: question.explanation,
     evidenceText: question.evidenceText.slice(0, 80),
@@ -74,17 +79,17 @@ function toDetail(row: DatabaseContent): ContentDetail {
     contentType: rawString(summary?.rawJson, "content_type") ?? undefined,
     language: row.language,
     isRecommendedChannel: row.channel?.listType === "recommended",
-    tags: row.tags.map(({ tag }) => tag.name),
+    tags: row.tags.map(({ tag }: any) => tag.name),
     suitableFor: summary?.suitableFor ?? "希望快速掌握這個主題的學習者",
     shortSummary: summary?.shortSummary ?? row.description ?? "此內容尚待補充摘要。",
-    learningObjectives: row.learningObjectives.length ? row.learningObjectives.map(({ objectiveText }) => objectiveText) : ["掌握影片介紹的核心概念"],
+    learningObjectives: row.learningObjectives.length ? row.learningObjectives.map(({ objectiveText }: any) => objectiveText) : ["掌握影片介紹的核心概念"],
     quizCount: questions.length,
     description: row.description,
     durationSeconds: row.durationSeconds,
     fullSummary: summary?.fullSummary ?? summary?.shortSummary ?? row.description ?? "此內容尚待補充完整摘要。",
     transcriptSummary: summary?.transcriptSummary ?? null,
     limitationsOrCautions: rawString(summary?.rawJson, "limitations_or_cautions"),
-    topicNames: row.topics.map(({ topic }) => topic.nameZhHant),
+    topicNames: row.topics.map(({ topic }: any) => topic.nameZhHant),
     quiz: questions.length === 3 ? { id: latestQuiz?.id, questions } : null,
   });
 }
