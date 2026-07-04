@@ -131,6 +131,21 @@ function applyDemoFilters(items: ContentDetail[], query: DigestQuery): ContentDe
   }).slice(0, query.limit);
 }
 
+export type PublicTopic = { slug: string; name: string };
+
+const demoTopics: PublicTopic[] = [
+  { slug: "rag", name: "RAG" },
+  { slug: "ai-agent", name: "AI Agent" },
+  { slug: "prompt-engineering", name: "提示工程" },
+  { slug: "llm", name: "LLM" },
+];
+
+export async function listPublicTopics(): Promise<PublicData<PublicTopic[]>> {
+  if (!process.env.DATABASE_URL) return { source: "demo", data: demoTopics };
+  const rows = await database().topic.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { nameZhHant: "asc" }], select: { slug: true, nameZhHant: true } });
+  return { source: "database", data: rows.map((row: { slug: string; nameZhHant: string }) => ({ slug: row.slug, name: row.nameZhHant })) };
+}
+
 export async function getDigest(query: DigestQuery): Promise<PublicData<DigestResponse>> {
   const date = query.date ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
   if (!process.env.DATABASE_URL) {
@@ -191,17 +206,22 @@ export async function searchContent(query: SearchQuery): Promise<PublicData<Cont
     const data = demoContent.filter((item) => textMatches(item, query.q) && (query.difficulty === "all" || item.difficulty === query.difficulty)).slice(0, query.limit);
     return { source: "demo", data };
   }
-  const contains = { contains: query.q, mode: "insensitive" as const };
-  const rows = await database().contentItem.findMany({
-    where: {
-      status: "published",
-      ...(query.difficulty === "all" ? {} : { difficulty: query.difficulty }),
+  const tokenMatches = (token: string) => {
+    const contains = { contains: token, mode: "insensitive" as const };
+    return {
       OR: [
         { title: contains }, { channelTitle: contains }, { description: contains },
         { summaries: { some: { OR: [{ shortSummary: contains }, { fullSummary: contains }, { transcriptSummary: contains }] } } },
         { tags: { some: { tag: { name: contains } } } },
         { learningObjectives: { some: { objectiveText: contains } } },
       ],
+    };
+  };
+  const rows = await database().contentItem.findMany({
+    where: {
+      status: "published",
+      ...(query.difficulty === "all" ? {} : { difficulty: query.difficulty }),
+      AND: query.q.split(/\s+/).filter(Boolean).map(tokenMatches),
     },
     include: contentInclude,
     orderBy: { publishedAt: "desc" },

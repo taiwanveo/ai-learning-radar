@@ -8,6 +8,7 @@ type PublicKey = {
   provider: string;
   displayName: string;
   maskedKey: string;
+  isActive: boolean;
   validationStatus: "valid" | "invalid" | null;
   lastValidatedAt: string | null;
 };
@@ -20,7 +21,7 @@ export function LlmManager() {
 
   const reload = useCallback(async () => {
     const response = await fetch("/api/admin/llm");
-    if (response.ok) setKeys((await response.json()).keys);
+    if (response.ok) setKeys(((await response.json()).keys as PublicKey[]).filter((key) => key.isActive));
   }, []);
 
   useEffect(() => { void reload(); }, [reload]);
@@ -77,6 +78,22 @@ export function LlmManager() {
     }
   }
 
+  async function deactivate(keyId: string, displayName: string) {
+    if (!confirm(`確定停用金鑰「${displayName}」？停用後將不再用於內容分析。`)) return;
+    setPending(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/llm/${keyId}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => null);
+      setMessage(response.ok ? "金鑰已停用" : (payload?.error ?? "停用失敗，請稍後再試"));
+      await reload();
+    } catch {
+      setMessage("無法連線至伺服器，請確認網路後再試");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function saveFallback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
@@ -122,6 +139,7 @@ export function LlmManager() {
               <div><strong>{key.displayName}</strong><span>{key.provider} · {key.maskedKey}</span></div>
               <span>{key.validationStatus === "valid" ? "有效" : "待驗證"}</span>
               <button type="button" disabled={pending} onClick={() => void validate(key.id)}>重新驗證</button>
+              <button type="button" disabled={pending} onClick={() => void deactivate(key.id, key.displayName)}>停用</button>
             </li>
           ))}</ul>
         )}

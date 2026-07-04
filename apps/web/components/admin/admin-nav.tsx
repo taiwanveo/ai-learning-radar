@@ -13,6 +13,7 @@ export const adminMenu = [
   { href: "/admin/llm", label: "LLM 設定", description: "管理內容分析用的 LLM 模型與各 Provider 的 API 金鑰（BYOK）。", roles: ["owner"] },
   { href: "/admin/admins", label: "管理員", description: "檢視管理者帳號與角色權限，僅 owner 可存取。", roles: ["owner"] },
   { href: "/admin/runs", label: "執行紀錄", description: "查看 pipeline 每次執行的狀態、phase 統計與失敗事件細節。", roles: ["owner", "admin", "editor", "viewer"] },
+  { href: "/admin/audit", label: "稽核紀錄", description: "追蹤所有管理操作的變更軌跡：誰在什麼時候改了什麼。", roles: ["owner", "admin"] },
 ] as const satisfies readonly { href: string; label: string; description: string; roles: readonly AdminRole[] }[];
 
 export function menuForRole(role: AdminRole) { return adminMenu.filter(item => (item.roles as readonly AdminRole[]).includes(role)); }

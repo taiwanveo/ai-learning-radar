@@ -1,6 +1,6 @@
 import { FilterBar } from "@/components/public/filter-bar";
 import { VideoCard } from "@/components/public/video-card";
-import { getDigest } from "@/server/public/repository";
+import { getDigest, listPublicTopics } from "@/server/public/repository";
 import { digestQuerySchema } from "@/server/public/types";
 
 type HomePageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -14,7 +14,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     ...(scalar.content_type ? { contentType: scalar.content_type } : {}),
   };
   const query = digestQuerySchema.catch({ topic: "artificial-intelligence", sort: "default", difficulty: "all", recommended: "all", published: "all", contentType: "all", limit: 20 }).parse(normalized);
-  const digest = await getDigest(query);
+  const [digest, topics] = await Promise.all([getDigest(query), listPublicTopics()]);
   const dateLabel = new Intl.DateTimeFormat("zh-Hant", { month: "long", day: "numeric", timeZone: "Asia/Taipei" }).format(new Date(`${digest.data.date}T12:00:00+08:00`));
 
   return (
@@ -26,7 +26,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
         <span className="today-bar__live"><i aria-hidden="true" />每日更新</span>
       </section>
-      <FilterBar topic={query.topic} difficulty={query.difficulty} sort={query.sort} language={query.language} published={query.published} contentType={query.contentType} />
+      <FilterBar topic={query.topic} difficulty={query.difficulty} sort={query.sort} language={query.language} published={query.published} contentType={query.contentType} topics={topics.data} />
       <section className="digest" aria-label="今日精選影片列表">
         {digest.data.items.length ? <div className="video-grid">{digest.data.items.map((video, index) => <VideoCard key={video.id} video={video} rank={index + 1} />)}</div> : <div className="empty-state"><h3>目前沒有符合條件的內容</h3><p>請調整主題、難度或語言後再試一次。</p></div>}
       </section>

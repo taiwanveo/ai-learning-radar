@@ -4,6 +4,9 @@ import { PrismaAuthRepository } from "./prisma-repository";
 export interface AuthRepository {
   findAdminByEmail(email: string): Promise<AdminAccount | null>;
   findAdminById(id: string): Promise<AdminAccount | null>;
+  listAdmins(): Promise<AdminAccount[]>;
+  createAdmin(input: Omit<AdminAccount, "id">): Promise<AdminAccount>;
+  updateAdmin(id: string, input: Partial<Pick<AdminAccount, "name" | "role" | "isActive" | "passwordHash">>): Promise<AdminAccount | null>;
   createSession(session: SessionRecord): Promise<void>;
   findSessionByTokenHash(tokenHash: string): Promise<SessionRecord | null>;
   deleteSessionByTokenHash(tokenHash: string): Promise<void>;
@@ -27,6 +30,26 @@ export class MemoryAuthRepository implements AuthRepository {
 
   async findAdminById(id: string) {
     return this.admins.get(id) ?? null;
+  }
+
+  async listAdmins() {
+    return [...this.admins.values()];
+  }
+
+  async createAdmin(input: Omit<AdminAccount, "id">) {
+    const email = input.email.toLowerCase();
+    if (await this.findAdminByEmail(email)) throw new Error("ADMIN_EMAIL_EXISTS");
+    const admin: AdminAccount = { ...input, email, id: crypto.randomUUID() };
+    this.admins.set(admin.id, admin);
+    return admin;
+  }
+
+  async updateAdmin(id: string, input: Partial<Pick<AdminAccount, "name" | "role" | "isActive" | "passwordHash">>) {
+    const existing = this.admins.get(id);
+    if (!existing) return null;
+    const next = { ...existing, ...input };
+    this.admins.set(id, next);
+    return next;
   }
 
   async createSession(session: SessionRecord) {

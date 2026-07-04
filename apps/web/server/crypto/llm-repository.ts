@@ -37,6 +37,7 @@ export interface LlmRepository {
   findKey(id: string): Promise<LlmKeyRecord | null>;
   createKey(input: CreateLlmKey): Promise<LlmKeyRecord>;
   updateValidation(id: string, result: Pick<LlmKeyRecord, "lastValidatedAt" | "validationStatus" | "validationError">): Promise<void>;
+  deactivateKey(id: string): Promise<boolean>;
   replaceFallbackChain(taskType: LlmTask, chain: LlmModelSetting[]): Promise<void>;
   listFallbackChains(): Promise<LlmModelSetting[]>;
 }
@@ -56,6 +57,12 @@ export class MemoryLlmRepository implements LlmRepository {
   async updateValidation(id: string, result: Pick<LlmKeyRecord, "lastValidatedAt" | "validationStatus" | "validationError">) {
     const key = this.keys.get(id);
     if (key) this.keys.set(id, { ...key, ...result, updatedAt: new Date() });
+  }
+  async deactivateKey(id: string) {
+    const key = this.keys.get(id);
+    if (!key) return false;
+    this.keys.set(id, { ...key, isActive: false, updatedAt: new Date() });
+    return true;
   }
   async replaceFallbackChain(taskType: LlmTask, chain: LlmModelSetting[]) {
     this.settings = [...this.settings.filter((item) => item.taskType !== taskType), ...chain];

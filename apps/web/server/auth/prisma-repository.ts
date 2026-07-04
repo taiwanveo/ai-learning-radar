@@ -20,6 +20,28 @@ export class PrismaAuthRepository implements AuthRepository {
     return this.prisma.admin.findUnique({ where: { id } });
   }
 
+  async listAdmins(): Promise<AdminAccount[]> {
+    return this.prisma.admin.findMany({ orderBy: { createdAt: "asc" } });
+  }
+
+  async createAdmin(input: Omit<AdminAccount, "id">): Promise<AdminAccount> {
+    try {
+      return await this.prisma.admin.create({ data: { ...input, email: input.email.toLowerCase() } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("ADMIN_EMAIL_EXISTS");
+      throw error;
+    }
+  }
+
+  async updateAdmin(id: string, input: Partial<Pick<AdminAccount, "name" | "role" | "isActive" | "passwordHash">>): Promise<AdminAccount | null> {
+    try {
+      return await this.prisma.admin.update({ where: { id }, data: input });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") return null;
+      throw error;
+    }
+  }
+
   async createSession(session: SessionRecord): Promise<void> {
     await this.prisma.adminSession.create({ data: session });
   }

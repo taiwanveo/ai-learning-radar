@@ -29,6 +29,14 @@ export class PrismaLlmRepository implements LlmRepository {
   async updateValidation(id: string, result: Pick<LlmKeyRecord, "lastValidatedAt" | "validationStatus" | "validationError">) {
     await this.prisma.llmApiKey.update({ where: { id }, data: result });
   }
+  async deactivateKey(id: string) {
+    try {
+      await this.prisma.llmApiKey.update({ where: { id }, data: { isActive: false } });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   async replaceFallbackChain(taskType: LlmTask, chain: LlmModelSetting[]) {
     await this.prisma.$transaction([
       this.prisma.llmModelSetting.deleteMany({ where: { taskType } }),
