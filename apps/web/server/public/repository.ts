@@ -100,14 +100,16 @@ function digestItem(content: ContentDetail): DigestItem {
 }
 
 function applyDemoFilters(items: ContentDetail[], query: DigestQuery): ContentDetail[] {
-  const end = query.date ? new Date(`${query.date}T23:59:59.999Z`).getTime() : Number.POSITIVE_INFINITY;
+  const end = query.date ? new Date(`${query.date}T23:59:59.999+08:00`).getTime() : Number.POSITIVE_INFINITY;
   const publishedAfter = query.published === "all"
     ? Number.NEGATIVE_INFINITY
-    : (query.date ? new Date(`${query.date}T23:59:59.999Z`).getTime() : Date.now()) - Number(query.published.slice(0, -1)) * 86_400_000;
+    : (query.date ? new Date(`${query.date}T23:59:59.999+08:00`).getTime() : Date.now()) - Number(query.published.slice(0, -1)) * 86_400_000;
   const filtered = items.filter((item) => {
     if (item.publishedAt) {
       const publishedAt = new Date(item.publishedAt).getTime();
       if (publishedAt > end || publishedAt < publishedAfter) return false;
+    } else if (query.published !== "all") {
+      return false;
     }
     if (query.difficulty !== "all" && item.difficulty !== query.difficulty) return false;
     if (query.language && item.language !== query.language) return false;
@@ -130,7 +132,7 @@ function applyDemoFilters(items: ContentDetail[], query: DigestQuery): ContentDe
 }
 
 export async function getDigest(query: DigestQuery): Promise<PublicData<DigestResponse>> {
-  const date = query.date ?? new Date().toISOString().slice(0, 10);
+  const date = query.date ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
   if (!process.env.DATABASE_URL) {
     return {
       source: "demo",
@@ -149,13 +151,14 @@ export async function getDigest(query: DigestQuery): Promise<PublicData<DigestRe
   const rows = await database().contentItem.findMany({
     where: {
       status: "published",
-      publishedAt: { lte: new Date(`${date}T23:59:59.999Z`) },
+      publishedAt: { lte: new Date(`${date}T23:59:59.999+08:00`) },
       topics: { some: { topicId: topic.id } },
       ...(query.difficulty === "all" ? {} : { difficulty: query.difficulty }),
       ...(query.language ? { language: query.language } : {}),
       ...(query.recommended === "all" ? {} : { channel: { listType: query.recommended === "true" ? "recommended" : { not: "recommended" as const } } }),
     },
     include: contentInclude,
+    orderBy: { publishedAt: "desc" },
     take: 100,
   });
   const details = rows.map(toDetail);
@@ -165,7 +168,10 @@ export async function getDigest(query: DigestQuery): Promise<PublicData<DigestRe
   };
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getContentDetail(id: string): Promise<PublicData<ContentDetail> | null> {
+  if (!UUID_PATTERN.test(id)) return null;
   if (!process.env.DATABASE_URL) {
     const content = demoContent.find((item) => item.id === id);
     return content ? { source: "demo", data: contentDetailSchema.parse(content) } : null;
