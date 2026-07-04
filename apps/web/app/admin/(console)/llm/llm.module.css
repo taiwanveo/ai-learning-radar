@@ -3,9 +3,14 @@
 .shell header p { color: var(--accent); font-weight: 700; letter-spacing: .1em; }
 .shell h1 { margin: .3rem 0; font-size: clamp(2rem, 5vw, 3.5rem); }
 .panel { margin: 1rem 0; padding: 1.5rem; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.providerSummary { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.providerBadge { display: inline-flex; padding: .3rem .7rem; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--ink-soft); font-size: .78rem; font-weight: 600; }
+.providerBadgeActive { border-color: var(--accent); color: var(--accent-strong); }
 .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .form input, .form select, .form textarea, .form button, .keys button { min-height: 44px; padding: .65rem .8rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
-.form button, .keys button { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); cursor: pointer; }
+.form button, .keys button { justify-self: start; border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); cursor: pointer; }
+.form button { min-width: 10rem; }
+.form button:disabled, .keys button:disabled { cursor: wait; opacity: .58; }
 .chainGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; grid-column: 1 / -1; }
 .chainRow { display: grid; gap: .35rem; font-size: .8rem; color: var(--ink-soft); }
 .chainRow select { width: 100%; }
@@ -14,4 +19,4 @@
 .keys div { display: grid; gap: .2rem; }
 .keys span { color: var(--ink-soft); }
 .status { min-height: 1.5rem; color: var(--accent); }
-@media (max-width: 650px) { .form { grid-template-columns: 1fr; } .chainGrid { grid-template-columns: 1fr; } .keys li { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .form { grid-template-columns: 1fr; } .form button { width: 100%; } .chainGrid { grid-template-columns: 1fr; } .keys li { grid-template-columns: 1fr; } }

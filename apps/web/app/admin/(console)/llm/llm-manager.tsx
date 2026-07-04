@@ -197,6 +197,17 @@ export function LlmManager() {
       <header><p>LLM / <Tip label="BYOK" text="Bring Your Own Key：使用你自己申請的 AI 服務金鑰（而非平台代管），金鑰只會加密後儲存，用於呼叫該 Provider 的 API 進行內容分析。"/></p><h1>模型與金鑰</h1><span>只有 owner 可以檢視或修改此頁。</span></header>
       <section className={styles.panel} aria-labelledby="credentials-title">
         <h2 id="credentials-title">Provider 金鑰</h2>
+        <div className={styles.providerSummary}>
+          {Object.entries(PROVIDER_LABELS).map(([provider, label]) => {
+            const providerKeys = keys.filter((key) => key.provider === provider);
+            const hasValid = providerKeys.some((key) => key.validationStatus === "valid");
+            return (
+              <span key={provider} className={`${styles.providerBadge} ${providerKeys.length ? styles.providerBadgeActive : ""}`}>
+                {label}：{providerKeys.length ? `已設定 ${providerKeys.length} 組${hasValid ? "" : "（待驗證）"}` : "尚未設定"}
+              </span>
+            );
+          })}
+        </div>
         <form className={styles.form} onSubmit={createKey}>
           <select name="provider" aria-label="Provider" required defaultValue="openai">
             <option value="openai">OpenAI</option><option value="gemini">Gemini</option>
@@ -204,15 +215,16 @@ export function LlmManager() {
           </select>
           <input name="displayName" placeholder="顯示名稱" maxLength={100} required />
           <input name="apiKey" type="password" autoComplete="off" placeholder="API key" required />
-          <button disabled={pending}>驗證並儲存</button>
+          <button disabled={pending}>{pending ? "驗證中…" : "驗證並儲存"}</button>
         </form>
+        <p role="status" className={styles.status}>{message}</p>
         {keys.length === 0 ? <p>尚未設定金鑰。</p> : (
           <ul className={styles.keys}>{keys.map((key) => (
             <li key={key.id}>
               <div><strong>{key.displayName}</strong><span>{PROVIDER_LABELS[key.provider] ?? key.provider} · {key.maskedKey}</span></div>
               <span>{key.validationStatus === "valid" ? "有效" : "待驗證"}</span>
-              <button type="button" disabled={pending} onClick={() => void validate(key.id)}>重新驗證</button>
-              <button type="button" disabled={pending} onClick={() => void deactivate(key.id, key.displayName)}>停用</button>
+              <button type="button" disabled={pending} onClick={() => void validate(key.id)}>{pending ? "處理中…" : "重新驗證"}</button>
+              <button type="button" disabled={pending} onClick={() => void deactivate(key.id, key.displayName)}>{pending ? "處理中…" : "停用"}</button>
             </li>
           ))}</ul>
         )}
@@ -256,7 +268,6 @@ export function LlmManager() {
         </form>
         <p role="status" className={styles.status}>{chainMessage}</p>
       </section>
-      <p role="status" className={styles.status}>{message}</p>
     </main>
   );
 }

@@ -32,5 +32,6 @@ export function authErrorResponse(error: unknown): Response {
   if (error instanceof AuthError) {
     return Response.json({ error: error.message }, { status: error.status });
   }
-  throw error;
+  console.error("Unexpected error while handling admin request", error);
+  return Response.json({ error: "伺服器發生未預期的錯誤，請稍後再試" }, { status: 500 });
 }

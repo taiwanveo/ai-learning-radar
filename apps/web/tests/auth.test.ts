@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as login } from "@/app/api/admin/auth/login/route";
 import {
   AuthError,
+  authErrorResponse,
   configureAuthRepository,
   createAdminSession,
   getSession,
@@ -65,5 +66,14 @@ describe("admin auth", () => {
     await expect(requireAdmin(["owner"], valid)).rejects.toMatchObject({ status: 403 } satisfies Partial<AuthError>);
     const tampered = new Request("http://localhost/admin", { headers: { cookie: `ai_radar_admin_session=${encodeURIComponent(session.value)}x` } });
     await expect(getSession(tampered)).resolves.toBeNull();
+  });
+
+  it("turns an unexpected non-auth error into a JSON 500 instead of rethrowing it unhandled", async () => {
+    const silence = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = authErrorResponse(new Error("APP_SECRET_KEY is required"));
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "伺服器發生未預期的錯誤，請稍後再試" });
+    expect(silence).toHaveBeenCalled();
+    silence.mockRestore();
   });
 });
