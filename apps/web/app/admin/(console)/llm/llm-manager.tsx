@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Tip } from "@/components/admin/admin-page";
 import styles from "./llm.module.css";
 
 type PublicKey = {
@@ -121,7 +122,7 @@ export function LlmManager() {
 
   return (
     <main className={styles.shell}>
-      <header><p>LLM / BYOK</p><h1>模型與金鑰</h1><span>只有 owner 可以檢視或修改此頁。</span></header>
+      <header><p>LLM / <Tip label="BYOK" text="Bring Your Own Key：使用你自己申請的 AI 服務金鑰（而非平台代管），金鑰只會加密後儲存，用於呼叫該 Provider 的 API 進行內容分析。"/></p><h1>模型與金鑰</h1><span>只有 owner 可以檢視或修改此頁。</span></header>
       <section className={styles.panel} aria-labelledby="credentials-title">
         <h2 id="credentials-title">Provider 金鑰</h2>
         <form className={styles.form} onSubmit={createKey}>
@@ -145,7 +146,7 @@ export function LlmManager() {
         )}
       </section>
       <section className={styles.panel} aria-labelledby="fallback-title">
-        <h2 id="fallback-title">Fallback chain</h2>
+        <h2 id="fallback-title"><Tip label="Fallback chain" text="當任務類型的主要模型呼叫失敗或逾時，系統會依序改用清單中的下一個模型；第一行是優先使用的 primary 模型。"/></h2>
         <form className={styles.form} onSubmit={saveFallback}>
           <select name="taskType" aria-label="任務類型">
             <option value="classify">分類</option><option value="summarize">摘要</option>

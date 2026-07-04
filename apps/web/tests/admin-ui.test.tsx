@@ -1,11 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ChannelCreateForm, ManualContentForm, TopicCreateForm, TopicKeywordsEditor, TriggerRunButton } from "@/components/admin/admin-controls";
-import type { Topic } from "@/server/admin/types";
+import { ChannelCreateForm, ManualContentForm, SettingsEditor, TopicCreateForm, TopicKeywordsEditor, TriggerRunButton } from "@/components/admin/admin-controls";
+import type { SearchSettings, Topic } from "@/server/admin/types";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const topicFixture: Topic = { id: "30000000-0000-4000-8000-000000000001", slug: "rag", nameZhHant: "RAG", description: null, parentTopicId: null, isActive: true, sortOrder: 0, keywords: [{ id: "30000000-0000-4000-8000-000000000002", keyword: "檢索增強生成", keywordType: "tw_term", weight: 1, isActive: true }] };
+
+const settingsFixture: SearchSettings = { topicId: "30000000-0000-4000-8000-000000000001", freshnessDays: 30, candidateLimit: 100, topN: 20, minDurationSeconds: 180, maxDurationSeconds: 3600, excludeShorts: true, minViewCount: 0, minEngagementScore: 0.01, growthGuardrailEnabled: false, minViewsPerDay: 0, autoPublish: true, youtubeRegionCode: "TW", relevanceLanguage: "zh-Hant", searchOrder: "relevance", scheduleCron: "0 6 * * *" };
 
 describe("admin write controls", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -21,5 +23,18 @@ describe("admin write controls", () => {
     expect(readonly).toContain("檢索增強生成");
     expect(readonly).not.toContain("新關鍵字");
     expect(readonly).not.toContain("移除關鍵字");
+  });
+  it("explains jargon fields with ⓘ tooltips", () => {
+    const topicForm = renderToStaticMarkup(<TopicCreateForm canWrite/>);
+    expect(topicForm).toContain("主題的英文識別代碼");
+    const channelForm = renderToStaticMarkup(<ChannelCreateForm canWrite/>);
+    expect(channelForm).toContain("YouTube 頻道的原始識別碼");
+    expect(channelForm).toContain("影響此頻道在排名時的加減分");
+    const contentForm = renderToStaticMarkup(<ManualContentForm canWrite/>);
+    expect(contentForm).toContain("要歸類到哪個主題的識別碼");
+    const settingsForm = renderToStaticMarkup(<SettingsEditor settings={[settingsFixture]} canWrite/>);
+    expect(settingsForm).toContain("越新鮮的內容在排名中會得到越高的加分");
+    expect(settingsForm).toContain("不可超過候選上限");
+    expect(settingsForm).toContain("需要管理者在「內容管理」頁手動按下「發布」");
   });
 });
