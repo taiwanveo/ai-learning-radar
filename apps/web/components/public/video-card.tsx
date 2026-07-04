@@ -15,11 +15,11 @@ function relativeDate(value: string | null): string {
 export function VideoCard({ video, rank = 1 }: VideoCardProps) {
   return (
     <article className="video-card">
-      <Link className="video-card__visual" href={`/content/${video.id}`}>
+      <a className="video-card__visual" href={video.sourceUrl} target="_blank" rel="noreferrer" aria-label={`在 YouTube 觀看：${video.title}`}>
         {video.thumbnailUrl ? <img src={video.thumbnailUrl} alt={`${video.title} 影片縮圖`} loading="lazy" /> : <span className="video-card__signal" aria-hidden="true"><i /><i /><i /><i /></span>}
         <span className="video-card__rank">#{rank.toString().padStart(2, "0")}</span>
         <span className="video-card__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 7 8 5-8 5V7Z" /></svg></span>
-      </Link>
+      </a>
       <div className="video-card__body">
         <h3><Link href={`/content/${video.id}`}>{video.title}</Link></h3>
         <div className="video-card__meta">
@@ -30,7 +30,10 @@ export function VideoCard({ video, rank = 1 }: VideoCardProps) {
           <span>{relativeDate(video.publishedAt)}</span>
         </div>
         <div className="tag-list" aria-label="內容標籤">
-          <span className="engagement-score" aria-label={`參與度分數 ${(video.engagementScore * 100).toFixed(1)}%`}>▲ {(video.engagementScore * 100).toFixed(1)}%</span>
+          <span className="engagement" tabIndex={0} aria-label={`參與度分數 ${(video.engagementScore * 100).toFixed(1)}%，計算方式為按讚數除以觀看次數`}>
+            <span className="engagement-score" aria-hidden="true">▲ {(video.engagementScore * 100).toFixed(1)}%</span>
+            <span className="engagement-tip" role="tooltip" aria-hidden="true">參與度分數 = 按讚數 ÷ 觀看次數。數值越高，代表越高比例的觀眾主動按讚，互動意願越強。</span>
+          </span>
           {video.difficulty === "beginner" ? <span className="tag tag--beginner">入門</span> : null}
           {video.tags.slice(0, 3).map((tag) => <span className="tag" key={tag}>{tag}</span>)}
         </div>

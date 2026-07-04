@@ -14,14 +14,24 @@ export default function AdminLoginPage() {
     setPending(true);
     setError("");
     const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: data.get("email"), password: data.get("password") }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: data.get("email"), password: data.get("password") }),
+      });
+    } catch {
+      setPending(false);
+      setError("無法連線至伺服器，請確認網路後再試");
+      return;
+    }
     setPending(false);
     if (!response.ok) {
-      setError("帳號或密碼不正確");
+      if (response.status === 401) setError("帳號或密碼不正確");
+      else if (response.status === 400) setError("請輸入有效的電子郵件與密碼");
+      else if (response.status >= 500) setError("伺服器發生錯誤，請稍後再試");
+      else setError("登入失敗，請稍後再試");
       return;
     }
     router.replace("/admin");

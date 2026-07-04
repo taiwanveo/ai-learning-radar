@@ -1,15 +1,15 @@
-.shell { width: min(1100px, calc(100% - 2rem)); margin: 3rem auto; color: #17201d; }
+.shell { width: min(1100px, calc(100% - 2rem)); margin: 3rem auto; color: var(--ink); }
 .shell header { margin-bottom: 2rem; }
-.shell header p { color: #146b50; font-weight: 700; letter-spacing: .1em; }
+.shell header p { color: var(--accent); font-weight: 700; letter-spacing: .1em; }
 .shell h1 { margin: .3rem 0; font-size: clamp(2rem, 5vw, 3.5rem); }
-.panel { margin: 1rem 0; padding: 1.5rem; border: 1px solid #dce2dd; border-radius: 18px; background: #fffef9; }
+.panel { margin: 1rem 0; padding: 1.5rem; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
 .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
-.form input, .form select, .form textarea, .form button, .keys button { min-height: 44px; padding: .65rem .8rem; border: 1px solid #bdc8c1; border-radius: 8px; font: inherit; }
+.form input, .form select, .form textarea, .form button, .keys button { min-height: 44px; padding: .65rem .8rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
 .form textarea { grid-column: 1 / -1; resize: vertical; }
-.form button, .keys button { border-color: #123f32; background: #123f32; color: white; cursor: pointer; }
+.form button, .keys button { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); cursor: pointer; }
 .keys { display: grid; gap: .6rem; padding: 0; list-style: none; }
-.keys li { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding-top: .8rem; border-top: 1px solid #dce2dd; }
+.keys li { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding-top: .8rem; border-top: 1px solid var(--line); }
 .keys div { display: grid; gap: .2rem; }
-.keys span { color: #5d6964; }
-.status { min-height: 1.5rem; color: #146b50; }
+.keys span { color: var(--ink-soft); }
+.status { min-height: 1.5rem; color: var(--accent); }
 @media (max-width: 650px) { .form { grid-template-columns: 1fr; } .form textarea { grid-column: auto; } .keys li { grid-template-columns: 1fr; } }
