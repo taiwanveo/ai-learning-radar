@@ -50,6 +50,15 @@ export function SiteHeader() {
         )}
 
         <div className="site-header__actions">
+          {isAdmin ? (
+            <Link className="theme-toggle" href="/" aria-label="回到 AI Learning Radar 前台" title="回到前台">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4.4 11.4 12 5l7.6 6.4M6.3 10.2v8.4h11.4v-8.4" />
+                <path d="M10 14.9a2.9 2.9 0 0 1 4 0M8.4 13.1a5.2 5.2 0 0 1 7.2 0" />
+                <circle cx="12" cy="16.8" r="0.5" />
+              </svg>
+            </Link>
+          ) : null}
           {isAdmin ? null : (
             <nav className="site-nav" aria-label="主要導覽">
               <Link

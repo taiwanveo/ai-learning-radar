@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/public/site-header";
+import { SiteFooter } from "@/components/public/site-footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,9 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <SiteHeader />
         {children}
-        <footer className="site-footer">
-          <p>AI Learning Radar · 為你的學習時間把關 · <a className="site-footer__admin" href="/admin">管理後台</a></p>
-        </footer>
+        <SiteFooter />
       </body>
     </html>
   );
