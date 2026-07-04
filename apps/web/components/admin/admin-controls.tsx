@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import type { ContentItem, SearchSettings } from "@/server/admin/types";
+import type { ContentItem, SearchSettings, Topic } from "@/server/admin/types";
 
 type Feedback = { kind: "success" | "error"; message: string } | null;
 
@@ -15,11 +15,26 @@ async function mutate(url: string, method: string, body?: unknown) {
 
 function Status({ feedback }: { feedback: Feedback }) { return feedback ? <p className={`admin-feedback admin-feedback--${feedback.kind}`} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.message}</p> : null; }
 
+export const KEYWORD_TYPE_LABELS = { tw_term: "台灣用語", cn_term: "中國用語", english: "英文", positive: "正向", negative: "排除", synonym: "同義詞" } as const;
+const keywordTypeOptions = Object.entries(KEYWORD_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>);
+
 export function TopicCreateForm({ canWrite }: { canWrite: boolean }) {
   const router = useRouter(); const [pending, setPending] = useState(false); const [feedback, setFeedback] = useState<Feedback>(null);
   async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); setPending(true); setFeedback(null); try { await mutate("/api/admin/topics", "POST", { slug: form.get("slug"), nameZhHant: form.get("nameZhHant"), keywords: form.get("keyword") ? [{ keyword: form.get("keyword"), keywordType: form.get("keywordType"), weight: 1, isActive: true }] : [] }); formElement.reset(); setFeedback({ kind: "success", message: "主題已新增" }); router.refresh(); } catch (error) { setFeedback({ kind: "error", message: error instanceof Error ? error.message : "新增失敗" }); } finally { setPending(false); } }
   if (!canWrite) return null;
-  return <form className="admin-panel admin-form" onSubmit={submit}><h2 className="admin-form-title">新增主題</h2><label>名稱<input name="nameZhHant" required maxLength={200}/></label><label><span className="admin-tip">Slug<span className="admin-tip__marker" aria-hidden="true">ⓘ</span><span className="admin-tip__text" role="tooltip">主題的英文識別代碼，會用在前台網址與資料關聯，只能使用小寫英文、數字與連字號（-），例如 ai-agent。建立後不建議變更。</span></span><input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="例如 ai-agent" aria-label="Slug，主題的英文識別代碼"/></label><label>第一個關鍵字<input name="keyword" maxLength={200}/></label><label>關鍵字類型<select name="keywordType" defaultValue="tw_term"><option value="tw_term">台灣用語</option><option value="cn_term">中國用語</option><option value="english">英文</option><option value="positive">正向</option><option value="negative">排除</option><option value="synonym">同義詞</option></select></label><div><button className="admin-button" disabled={pending}>{pending ? "新增中…" : "新增主題"}</button><Status feedback={feedback}/></div></form>;
+  return <form className="admin-panel admin-form" onSubmit={submit}><h2 className="admin-form-title">新增主題</h2><label>名稱<input name="nameZhHant" required maxLength={200}/></label><label><span className="admin-tip">Slug<span className="admin-tip__marker" aria-hidden="true">ⓘ</span><span className="admin-tip__text" role="tooltip">主題的英文識別代碼，會用在前台網址與資料關聯，只能使用小寫英文、數字與連字號（-），例如 ai-agent。建立後不建議變更。</span></span><input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="例如 ai-agent" aria-label="Slug，主題的英文識別代碼"/></label><label>第一個關鍵字<input name="keyword" maxLength={200}/></label><label>關鍵字類型<select name="keywordType" defaultValue="tw_term">{keywordTypeOptions}</select></label><div><button className="admin-button" disabled={pending}>{pending ? "新增中…" : "新增主題"}</button><Status feedback={feedback}/></div></form>;
+}
+
+export function TopicKeywordsEditor({ topic, canWrite }: { topic: Topic; canWrite: boolean }) {
+  const router = useRouter(); const [pending, setPending] = useState(false); const [feedback, setFeedback] = useState<Feedback>(null);
+  async function save(keywords: Topic["keywords"], success: string) { setPending(true); setFeedback(null); try { await mutate(`/api/admin/topics/${topic.id}`, "PATCH", { keywords: keywords.map(({ id, keyword, keywordType, weight, isActive }) => ({ id, keyword, keywordType, weight, isActive })) }); setFeedback({ kind: "success", message: success }); router.refresh(); return true; } catch (e) { setFeedback({ kind: "error", message: e instanceof Error ? e.message : "更新失敗" }); return false; } finally { setPending(false); } }
+  async function add(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const keyword = String(form.get("keyword") ?? "").trim(); if (!keyword) return; const keywordType = String(form.get("keywordType")) as Topic["keywords"][number]["keywordType"]; if (await save([...topic.keywords, { id: crypto.randomUUID(), keyword, keywordType, weight: 1, isActive: true }], "關鍵字已新增")) formElement.reset(); }
+  async function remove(keywordId: string, keyword: string) { if (!confirm(`確定移除關鍵字「${keyword}」？`)) return; await save(topic.keywords.filter(k => k.id !== keywordId), "關鍵字已移除"); }
+  return <div className="admin-keywords">
+    <div className="admin-keywords__list">{topic.keywords.length ? topic.keywords.map(k => <span className="admin-badge" key={k.id}>{k.keyword}（{KEYWORD_TYPE_LABELS[k.keywordType] ?? k.keywordType}）{canWrite ? <button type="button" className="admin-keywords__remove" aria-label={`移除關鍵字 ${k.keyword}`} disabled={pending} onClick={() => remove(k.id, k.keyword)}>✕</button> : null}</span>) : <span className="admin-muted">—</span>}</div>
+    {canWrite ? <form className="admin-keywords__form" onSubmit={add}><input name="keyword" required maxLength={200} placeholder="新關鍵字" aria-label="新關鍵字" disabled={pending}/><select name="keywordType" defaultValue="tw_term" aria-label="關鍵字類型" disabled={pending}>{keywordTypeOptions}</select><button className="admin-button admin-button--secondary" type="submit" disabled={pending}>{pending ? "新增中…" : "新增"}</button></form> : null}
+    <Status feedback={feedback}/>
+  </div>;
 }
 
 export function DisableTopicButton({ id, canWrite }: { id: string; canWrite: boolean }) { const router=useRouter(); const [pending,setPending]=useState(false); const [feedback,setFeedback]=useState<Feedback>(null); if(!canWrite)return null; async function disable(){if(!confirm("確定停用此主題？既有資料會保留。"))return;setPending(true);try{await mutate(`/api/admin/topics/${id}`,"DELETE");setFeedback({kind:"success",message:"已停用"});router.refresh();}catch(e){setFeedback({kind:"error",message:e instanceof Error?e.message:"停用失敗"});}finally{setPending(false);}} return <div><button className="admin-button admin-button--secondary" type="button" disabled={pending} onClick={disable}>{pending?"停用中…":"停用"}</button><Status feedback={feedback}/></div>; }
