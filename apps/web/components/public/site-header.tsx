@@ -30,39 +30,44 @@ function HeaderSearch() {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const isAdmin = pathname.startsWith("/admin");
   const navLink = (matches: boolean) => `site-nav__link${matches ? " site-nav__link--active" : ""}`;
 
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link className="brand" href="/" aria-label="AI Learning Radar 首頁">
+        <Link className="brand" href={isAdmin ? "/admin" : "/"} aria-label={isAdmin ? "回到後台首頁" : "AI Learning Radar 首頁"}>
           <span className="brand__mark" aria-hidden="true">
             <span />
           </span>
-          <span className="brand__name">AI Learning Radar</span>
+          <span className="brand__name">AI Learning Radar{isAdmin ? " · 管理後台" : ""}</span>
         </Link>
 
-        <Suspense fallback={<div className="header-search" aria-hidden="true" />}>
-          <HeaderSearch />
-        </Suspense>
+        {isAdmin ? null : (
+          <Suspense fallback={<div className="header-search" aria-hidden="true" />}>
+            <HeaderSearch />
+          </Suspense>
+        )}
 
         <div className="site-header__actions">
-          <nav className="site-nav" aria-label="主要導覽">
-            <Link
-              className={navLink(pathname === "/" || pathname.startsWith("/content"))}
-              href="/"
-              aria-current={pathname === "/" ? "page" : undefined}
-            >
-              今日精選
-            </Link>
-            <Link
-              className={navLink(pathname.startsWith("/search"))}
-              href="/search"
-              aria-current={pathname.startsWith("/search") ? "page" : undefined}
-            >
-              搜尋
-            </Link>
-          </nav>
+          {isAdmin ? null : (
+            <nav className="site-nav" aria-label="主要導覽">
+              <Link
+                className={navLink(pathname === "/" || pathname.startsWith("/content"))}
+                href="/"
+                aria-current={pathname === "/" ? "page" : undefined}
+              >
+                今日精選
+              </Link>
+              <Link
+                className={navLink(pathname.startsWith("/search"))}
+                href="/search"
+                aria-current={pathname.startsWith("/search") ? "page" : undefined}
+              >
+                搜尋
+              </Link>
+            </nav>
+          )}
           <ThemeToggle />
         </div>
       </div>

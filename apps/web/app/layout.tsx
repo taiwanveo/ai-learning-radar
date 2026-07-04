@@ -18,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <SiteHeader />
         {children}
         <footer className="site-footer">
-          <p>AI Learning Radar · 為你的學習時間把關</p>
+          <p>AI Learning Radar · 為你的學習時間把關 · <a className="site-footer__admin" href="/admin">管理後台</a></p>
         </footer>
       </body>
     </html>
