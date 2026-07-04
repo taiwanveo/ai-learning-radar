@@ -15,6 +15,7 @@ const publicContentBaseSchema = z.object({
   thumbnailUrl: z.string().url().nullable(),
   title: z.string().trim().min(1),
   channelTitle: z.string().trim().min(1).nullable(),
+  channelUrl: z.string().url().nullable().default(null),
   publishedAt: isoDateTimeSchema.nullable(),
   viewCount: z.number().int().nonnegative(),
   likeCount: z.number().int().nonnegative(),

@@ -23,7 +23,11 @@ export function VideoCard({ video, rank = 1 }: VideoCardProps) {
       <div className="video-card__body">
         <h3><Link href={`/content/${video.id}`}>{video.title}</Link></h3>
         <div className="video-card__meta">
-          <span>{video.channelTitle ?? "頻道未提供"}</span>
+          {video.channelUrl ? (
+            <a className="video-card__channel" href={video.channelUrl} target="_blank" rel="noreferrer">{video.channelTitle ?? "頻道未提供"}</a>
+          ) : (
+            <span>{video.channelTitle ?? "頻道未提供"}</span>
+          )}
           <span aria-hidden="true">·</span>
           <span>{compactNumber(video.viewCount)} 次觀看</span>
           <span aria-hidden="true">·</span>

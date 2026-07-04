@@ -5,7 +5,7 @@ import { demoContent } from "./demo-content";
 import type { ContentDetail, DigestItem, DigestQuery, DigestResponse, PublicData, SearchQuery } from "./types";
 
 const contentInclude = {
-  channel: { select: { listType: true } },
+  channel: { select: { listType: true, handle: true, sourceChannelId: true } },
   youtubeStats: { orderBy: { fetchedAt: "desc" as const }, take: 1 },
   scores: { orderBy: { calculatedAt: "desc" as const }, take: 1 },
   summaries: { orderBy: { createdAt: "desc" as const }, take: 1 },
@@ -44,6 +44,13 @@ function rawString(raw: JsonValue | undefined, key: string): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+export function channelUrl(channel: { handle: string | null; sourceChannelId: string } | null | undefined): string | null {
+  if (!channel) return null;
+  if (channel.handle) return `https://www.youtube.com/${channel.handle.replace(/^@?/, "@")}`;
+  if (channel.sourceChannelId) return `https://www.youtube.com/channel/${channel.sourceChannelId}`;
+  return null;
+}
+
 function toDetail(row: DatabaseContent): ContentDetail {
   const stats = row.youtubeStats[0];
   const score = row.scores[0];
@@ -68,6 +75,7 @@ function toDetail(row: DatabaseContent): ContentDetail {
     thumbnailUrl: row.thumbnailUrl,
     title: row.title,
     channelTitle: row.channelTitle,
+    channelUrl: channelUrl(row.channel),
     publishedAt: row.publishedAt?.toISOString() ?? null,
     viewCount: numeric(stats?.viewCount),
     likeCount: numeric(stats?.likeCount),

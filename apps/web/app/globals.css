@@ -674,6 +674,16 @@ html[data-theme="dark"] .theme-toggle__moon {
   gap: 0.35rem;
 }
 
+.video-card__channel {
+  color: var(--ink-soft);
+  font-weight: 650;
+}
+
+.video-card__channel:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .tag-list {
   display: flex;
   margin-top: 0.7rem;

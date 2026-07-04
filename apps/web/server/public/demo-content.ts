@@ -39,7 +39,7 @@ const quiz = (seed: number, subject: string): NonNullable<ContentDetail["quiz"]>
 export const demoContent: ContentDetail[] = [
   {
     id: "20000000-0000-4000-8000-000000000001", sourceType: "youtube", sourceUrl: "https://www.youtube.com/watch?v=demo-rag", thumbnailUrl: null,
-    title: "從零打造 RAG：讓 AI 讀懂你的私有知識庫", channelTitle: "AI 工程筆記", publishedAt: "2026-07-02T02:00:00.000Z",
+    title: "從零打造 RAG：讓 AI 讀懂你的私有知識庫", channelTitle: "AI 工程筆記", channelUrl: null, publishedAt: "2026-07-02T02:00:00.000Z",
     viewCount: 38000, likeCount: 2800, commentCount: 390, engagementScore: 0.084, freshEngagementScore: 0.91, radarScore: 0.94,
     difficulty: "beginner", contentType: "tutorial", language: "zh-Hant", isRecommendedChannel: true,
     tags: ["RAG", "向量資料庫"], suitableFor: "想把生成式 AI 導入實際專案的開發者",
@@ -52,7 +52,7 @@ export const demoContent: ContentDetail[] = [
   },
   {
     id: "20000000-0000-4000-8000-000000000002", sourceType: "youtube", sourceUrl: "https://www.youtube.com/watch?v=demo-agent", thumbnailUrl: null,
-    title: "AI Agent 工作流實戰：從工具呼叫到任務規劃", channelTitle: "生成式 AI 實驗室", publishedAt: "2026-06-30T02:00:00.000Z",
+    title: "AI Agent 工作流實戰：從工具呼叫到任務規劃", channelTitle: "生成式 AI 實驗室", channelUrl: null, publishedAt: "2026-06-30T02:00:00.000Z",
     viewCount: 21000, likeCount: 1300, commentCount: 360, engagementScore: 0.079, freshEngagementScore: 0.82, radarScore: 0.88,
     difficulty: "normal", contentType: "tutorial", language: "zh-Hant", isRecommendedChannel: true,
     tags: ["AI Agent", "Workflow"], suitableFor: "已熟悉提示工程，想建立自動化流程的人",
@@ -65,7 +65,7 @@ export const demoContent: ContentDetail[] = [
   },
   {
     id: "20000000-0000-4000-8000-000000000003", sourceType: "youtube", sourceUrl: "https://www.youtube.com/watch?v=demo-prompt", thumbnailUrl: null,
-    title: "提示工程入門：寫出穩定、可重複的好提示", channelTitle: "數位學習所", publishedAt: "2026-06-28T02:00:00.000Z",
+    title: "提示工程入門：寫出穩定、可重複的好提示", channelTitle: "數位學習所", channelUrl: null, publishedAt: "2026-06-28T02:00:00.000Z",
     viewCount: 64000, likeCount: 4100, commentCount: 510, engagementScore: 0.072, freshEngagementScore: 0.78, radarScore: 0.86,
     difficulty: "beginner", contentType: "tutorial", language: "zh-Hant", isRecommendedChannel: false,
     tags: ["Prompt", "入門"], suitableFor: "剛開始使用生成式 AI 的學習者",
@@ -78,7 +78,7 @@ export const demoContent: ContentDetail[] = [
   },
   {
     id: "20000000-0000-4000-8000-000000000004", sourceType: "youtube", sourceUrl: "https://www.youtube.com/watch?v=demo-local", thumbnailUrl: null,
-    title: "本機大型語言模型：硬體選擇、量化與部署指南", channelTitle: "開源模型觀察站", publishedAt: "2026-06-26T02:00:00.000Z",
+    title: "本機大型語言模型：硬體選擇、量化與部署指南", channelTitle: "開源模型觀察站", channelUrl: null, publishedAt: "2026-06-26T02:00:00.000Z",
     viewCount: 17000, likeCount: 960, commentCount: 196, engagementScore: 0.068, freshEngagementScore: 0.66, radarScore: 0.79,
     difficulty: "normal", contentType: "tutorial", language: "zh-Hant", isRecommendedChannel: false,
     tags: ["LLM", "本機部署"], suitableFor: "重視資料隱私，準備在本機執行模型的技術團隊",
