@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Tip } from "@/components/admin/admin-page";
 import styles from "./llm.module.css";
 
@@ -14,18 +14,84 @@ type PublicKey = {
   lastValidatedAt: string | null;
 };
 
+type FallbackChainSetting = { taskType: string; provider: string; modelId: string; priority: number };
+type ModelGroup = { provider: string; label: string; models: string[] };
+
+const TASKS = [
+  { value: "classify", label: "分類" },
+  { value: "summarize", label: "摘要" },
+  { value: "quiz", label: "測驗" },
+  { value: "learning_path", label: "學習路徑" },
+  { value: "repair_json", label: "JSON 修復" },
+];
+
+const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI", gemini: "Gemini", anthropic: "Anthropic", openrouter: "OpenRouter" };
+const CHAIN_LENGTH = 3;
+const ROW_LABELS = ["主要模型", "備援模型 1", "備援模型 2"];
+
+function chainStepsFor(taskType: string, chains: FallbackChainSetting[]): string[] {
+  const saved = chains.filter((c) => c.taskType === taskType).sort((a, b) => a.priority - b.priority);
+  const steps = Array.from({ length: CHAIN_LENGTH }, () => "");
+  saved.slice(0, CHAIN_LENGTH).forEach((step, index) => { steps[index] = `${step.provider}:${step.modelId}`; });
+  return steps;
+}
+
 export function LlmManager() {
   const [keys, setKeys] = useState<PublicKey[]>([]);
-  const [models, setModels] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
 
+  const [fallbackChains, setFallbackChains] = useState<FallbackChainSetting[]>([]);
+  const [chainsLoaded, setChainsLoaded] = useState(false);
+  const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsError, setModelsError] = useState("");
+  const [taskType, setTaskType] = useState(TASKS[0].value);
+  const [chainSteps, setChainSteps] = useState<string[]>(Array.from({ length: CHAIN_LENGTH }, () => ""));
+  const [chainMessage, setChainMessage] = useState("");
+  const [chainPending, setChainPending] = useState(false);
+  const initialized = useRef(false);
+
   const reload = useCallback(async () => {
     const response = await fetch("/api/admin/llm");
-    if (response.ok) setKeys(((await response.json()).keys as PublicKey[]).filter((key) => key.isActive));
+    if (response.ok) {
+      const payload = await response.json();
+      setKeys((payload.keys as PublicKey[]).filter((key) => key.isActive));
+      setFallbackChains(payload.fallbackChains ?? []);
+      setChainsLoaded(true);
+    }
+  }, []);
+
+  const reloadModels = useCallback(async () => {
+    setModelsLoading(true);
+    setModelsError("");
+    try {
+      const response = await fetch("/api/admin/llm/available-models");
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) { setModelsError(payload?.error ?? "無法載入模型清單"); return; }
+      setModelGroups(payload.groups ?? []);
+    } catch {
+      setModelsError("無法連線至伺服器，請確認網路後再試");
+    } finally {
+      setModelsLoading(false);
+    }
   }, []);
 
   useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => { void reloadModels(); }, [reloadModels]);
+
+  useEffect(() => {
+    if (!chainsLoaded || initialized.current) return;
+    initialized.current = true;
+    setChainSteps(chainStepsFor(taskType, fallbackChains));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chainsLoaded]);
+
+  function selectTask(next: string) {
+    setTaskType(next);
+    setChainSteps(chainStepsFor(next, fallbackChains));
+    setChainMessage("");
+  }
 
   async function createKey(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,9 +115,8 @@ export function LlmManager() {
         return;
       }
       form.reset();
-      setModels(payload.models);
       setMessage("金鑰已驗證並加密儲存");
-      await reload();
+      await Promise.all([reload(), reloadModels()]);
     } catch {
       setMessage("無法連線至伺服器，請確認網路後再試");
     } finally {
@@ -70,7 +135,6 @@ export function LlmManager() {
       });
       const payload = await response.json().catch(() => null);
       setMessage(response.ok ? "金鑰有效" : (payload?.error ?? "驗證失敗，請稍後再試"));
-      if (response.ok) setModels(payload.models);
       await reload();
     } catch {
       setMessage("無法連線至伺服器，請確認網路後再試");
@@ -87,7 +151,7 @@ export function LlmManager() {
       const response = await fetch(`/api/admin/llm/${keyId}`, { method: "DELETE" });
       const payload = await response.json().catch(() => null);
       setMessage(response.ok ? "金鑰已停用" : (payload?.error ?? "停用失敗，請稍後再試"));
-      await reload();
+      await Promise.all([reload(), reloadModels()]);
     } catch {
       setMessage("無法連線至伺服器，請確認網路後再試");
     } finally {
@@ -97,28 +161,36 @@ export function LlmManager() {
 
   async function saveFallback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPending(true);
-    setMessage("");
-    const data = new FormData(event.currentTarget);
-    const rows = String(data.get("models") ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
-    const chain = rows.map((line) => {
-      const [provider, ...model] = line.split(":");
-      return { provider, modelId: model.join(":") };
+    setChainPending(true);
+    setChainMessage("");
+    const selected = chainSteps.filter(Boolean);
+    if (new Set(selected).size !== selected.length) {
+      setChainMessage("備援清單中有重複的模型，請個別選擇不同的模型");
+      setChainPending(false);
+      return;
+    }
+    const chain = selected.map((value) => {
+      const separator = value.indexOf(":");
+      return { provider: value.slice(0, separator), modelId: value.slice(separator + 1) };
     });
     try {
       const response = await fetch("/api/admin/llm/fallback", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ taskType: data.get("taskType"), chain }),
+        body: JSON.stringify({ taskType, chain }),
       });
       const payload = await response.json().catch(() => null);
-      setMessage(response.ok ? "Fallback chain 已更新" : (payload?.error ?? "更新失敗，請稍後再試"));
+      if (response.ok) { setChainMessage("備援模型順序已更新"); await reload(); }
+      else setChainMessage(payload?.error ?? "更新失敗，請稍後再試");
     } catch {
-      setMessage("無法連線至伺服器，請確認網路後再試");
+      setChainMessage("無法連線至伺服器，請確認網路後再試");
     } finally {
-      setPending(false);
+      setChainPending(false);
     }
   }
+
+  const availableValues = new Set(modelGroups.flatMap((group) => group.models.map((model) => `${group.provider}:${model}`)));
+  const hasModels = modelGroups.length > 0;
 
   return (
     <main className={styles.shell}>
@@ -137,7 +209,7 @@ export function LlmManager() {
         {keys.length === 0 ? <p>尚未設定金鑰。</p> : (
           <ul className={styles.keys}>{keys.map((key) => (
             <li key={key.id}>
-              <div><strong>{key.displayName}</strong><span>{key.provider} · {key.maskedKey}</span></div>
+              <div><strong>{key.displayName}</strong><span>{PROVIDER_LABELS[key.provider] ?? key.provider} · {key.maskedKey}</span></div>
               <span>{key.validationStatus === "valid" ? "有效" : "待驗證"}</span>
               <button type="button" disabled={pending} onClick={() => void validate(key.id)}>重新驗證</button>
               <button type="button" disabled={pending} onClick={() => void deactivate(key.id, key.displayName)}>停用</button>
@@ -146,17 +218,43 @@ export function LlmManager() {
         )}
       </section>
       <section className={styles.panel} aria-labelledby="fallback-title">
-        <h2 id="fallback-title"><Tip label="Fallback chain" text="當任務類型的主要模型呼叫失敗或逾時，系統會依序改用清單中的下一個模型；第一行是優先使用的 primary 模型。"/></h2>
+        <h2 id="fallback-title"><Tip label="備援模型順序" text="當主要模型呼叫失敗或逾時，系統會依序改用清單中的下一個模型；由上到下即為改用順序。"/></h2>
         <form className={styles.form} onSubmit={saveFallback}>
-          <select name="taskType" aria-label="任務類型">
-            <option value="classify">分類</option><option value="summarize">摘要</option>
-            <option value="quiz">測驗</option><option value="learning_path">學習路徑</option>
-            <option value="repair_json">JSON 修復</option>
+          <select aria-label="任務類型" value={taskType} onChange={(event) => selectTask(event.target.value)}>
+            {TASKS.map((task) => <option key={task.value} value={task.value}>{task.label}</option>)}
           </select>
-          <textarea name="models" rows={4} placeholder={"每行一個 provider:model-id，第一行為 primary\nopenai:gpt-4.1-mini"} required />
-          <button disabled={pending}>儲存 chain</button>
+          <div className={styles.chainGrid}>
+            {ROW_LABELS.map((rowLabel, index) => {
+              const value = chainSteps[index] ?? "";
+              const stale = value && !availableValues.has(value) ? value : "";
+              return (
+                <label className={styles.chainRow} key={rowLabel}>
+                  {rowLabel}
+                  <select
+                    aria-label={rowLabel}
+                    value={value}
+                    required={index === 0}
+                    disabled={chainPending || !hasModels}
+                    onChange={(event) => setChainSteps((prev) => { const next = [...prev]; next[index] = event.target.value; return next; })}
+                  >
+                    <option value="" disabled={index === 0}>{index === 0 ? "請選擇模型" : "（不使用）"}</option>
+                    {stale ? <option value={stale}>⚠️ {PROVIDER_LABELS[stale.split(":")[0]] ?? stale.split(":")[0]} | {stale.slice(stale.indexOf(":") + 1)}（金鑰可能已停用或模型已下架）</option> : null}
+                    {modelGroups.map((group) => (
+                      <optgroup label={group.label} key={group.provider}>
+                        {group.models.map((model) => <option key={model} value={`${group.provider}:${model}`}>{group.label} | {model}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+              );
+            })}
+          </div>
+          {modelsLoading ? <p>正在載入可用模型…</p> : null}
+          {!modelsLoading && modelsError ? <p role="alert">{modelsError} <button type="button" onClick={() => void reloadModels()}>重試</button></p> : null}
+          {!modelsLoading && !modelsError && !hasModels ? <p>尚無可用的模型，請先在上方新增並驗證至少一組 API 金鑰。</p> : null}
+          <button disabled={chainPending || !hasModels}>{chainPending ? "儲存中…" : "儲存備援順序"}</button>
         </form>
-        {models.length > 0 ? <p>可用模型：{models.slice(0, 8).join("、")}</p> : null}
+        <p role="status" className={styles.status}>{chainMessage}</p>
       </section>
       <p role="status" className={styles.status}>{message}</p>
     </main>

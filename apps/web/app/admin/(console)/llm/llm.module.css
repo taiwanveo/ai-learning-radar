@@ -5,11 +5,13 @@
 .panel { margin: 1rem 0; padding: 1.5rem; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
 .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .form input, .form select, .form textarea, .form button, .keys button { min-height: 44px; padding: .65rem .8rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
-.form textarea { grid-column: 1 / -1; resize: vertical; }
 .form button, .keys button { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); cursor: pointer; }
+.chainGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; grid-column: 1 / -1; }
+.chainRow { display: grid; gap: .35rem; font-size: .8rem; color: var(--ink-soft); }
+.chainRow select { width: 100%; }
 .keys { display: grid; gap: .6rem; padding: 0; list-style: none; }
 .keys li { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding-top: .8rem; border-top: 1px solid var(--line); }
 .keys div { display: grid; gap: .2rem; }
 .keys span { color: var(--ink-soft); }
 .status { min-height: 1.5rem; color: var(--accent); }
-@media (max-width: 650px) { .form { grid-template-columns: 1fr; } .form textarea { grid-column: auto; } .keys li { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .form { grid-template-columns: 1fr; } .chainGrid { grid-template-columns: 1fr; } .keys li { grid-template-columns: 1fr; } }
