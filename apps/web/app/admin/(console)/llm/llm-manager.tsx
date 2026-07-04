@@ -31,56 +31,75 @@ export function LlmManager() {
     setMessage("");
     const form = event.currentTarget;
     const data = new FormData(form);
-    const response = await fetch("/api/admin/llm", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        provider: data.get("provider"),
-        displayName: data.get("displayName"),
-        apiKey: data.get("apiKey"),
-      }),
-    });
-    const payload = await response.json();
-    setPending(false);
-    if (!response.ok) {
-      setMessage(payload.error ?? "驗證失敗");
-      return;
+    try {
+      const response = await fetch("/api/admin/llm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          provider: data.get("provider"),
+          displayName: data.get("displayName"),
+          apiKey: data.get("apiKey"),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setMessage(payload?.error ?? "驗證失敗，請稍後再試");
+        return;
+      }
+      form.reset();
+      setModels(payload.models);
+      setMessage("金鑰已驗證並加密儲存");
+      await reload();
+    } catch {
+      setMessage("無法連線至伺服器，請確認網路後再試");
+    } finally {
+      setPending(false);
     }
-    form.reset();
-    setModels(payload.models);
-    setMessage("金鑰已驗證並加密儲存");
-    await reload();
   }
 
   async function validate(keyId: string) {
     setPending(true);
-    const response = await fetch("/api/admin/llm/validate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ keyId }),
-    });
-    const payload = await response.json();
-    setPending(false);
-    setMessage(response.ok ? "金鑰有效" : (payload.error ?? "驗證失敗"));
-    if (response.ok) setModels(payload.models);
-    await reload();
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/llm/validate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ keyId }),
+      });
+      const payload = await response.json().catch(() => null);
+      setMessage(response.ok ? "金鑰有效" : (payload?.error ?? "驗證失敗，請稍後再試"));
+      if (response.ok) setModels(payload.models);
+      await reload();
+    } catch {
+      setMessage("無法連線至伺服器，請確認網路後再試");
+    } finally {
+      setPending(false);
+    }
   }
 
   async function saveFallback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setPending(true);
+    setMessage("");
     const data = new FormData(event.currentTarget);
     const rows = String(data.get("models") ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
     const chain = rows.map((line) => {
       const [provider, ...model] = line.split(":");
       return { provider, modelId: model.join(":") };
     });
-    const response = await fetch("/api/admin/llm/fallback", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ taskType: data.get("taskType"), chain }),
-    });
-    const payload = await response.json();
-    setMessage(response.ok ? "Fallback chain 已更新" : (payload.error ?? "更新失敗"));
+    try {
+      const response = await fetch("/api/admin/llm/fallback", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ taskType: data.get("taskType"), chain }),
+      });
+      const payload = await response.json().catch(() => null);
+      setMessage(response.ok ? "Fallback chain 已更新" : (payload?.error ?? "更新失敗，請稍後再試"));
+    } catch {
+      setMessage("無法連線至伺服器，請確認網路後再試");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -116,7 +135,7 @@ export function LlmManager() {
             <option value="repair_json">JSON 修復</option>
           </select>
           <textarea name="models" rows={4} placeholder={"每行一個 provider:model-id，第一行為 primary\nopenai:gpt-4.1-mini"} required />
-          <button>儲存 chain</button>
+          <button disabled={pending}>儲存 chain</button>
         </form>
         {models.length > 0 ? <p>可用模型：{models.slice(0, 8).join("、")}</p> : null}
       </section>

@@ -8,12 +8,17 @@ export async function actor(request: Request, roles = readableRoles): Promise<Ad
   const principal = await requireAdmin(roles, request);
   return { id: principal.id, role: principal.role, email: principal.email };
 }
+const codeMessages: Record<string, string> = {
+  TOPIC_SLUG_EXISTS: "此 Slug 已被使用，請換一個識別代碼",
+  CONTENT_EXISTS: "此內容已存在，請勿重複新增",
+};
 export function invalid(error: unknown) {
   if (error instanceof AuthError) return authErrorResponse(error);
   const issues = typeof error === "object" && error && "issues" in error ? (error as { issues: unknown }).issues : undefined;
-  const message = error instanceof Error ? error.message : "Invalid request";
-  const status = message.endsWith("_EXISTS") ? 409 : 400;
-  return NextResponse.json({ error: { code: message, message, issues } }, { status });
+  const code = issues ? "VALIDATION_ERROR" : error instanceof Error ? error.message : "INVALID_REQUEST";
+  const status = code.endsWith("_EXISTS") ? 409 : 400;
+  const message = codeMessages[code] ?? (issues ? "輸入資料格式不正確，請檢查各欄位後再試" : code);
+  return NextResponse.json({ error: { code, message, issues } }, { status });
 }
 export const notFound = (entity: string) => NextResponse.json({ error: { code: "NOT_FOUND", message: `${entity} 不存在` } }, { status: 404 });
 
