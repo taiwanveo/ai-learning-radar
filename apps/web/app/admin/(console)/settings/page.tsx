@@ -2,15 +2,25 @@ import { AdminPage, EmptyState, Tip } from "@/components/admin/admin-page";
 import { getAdminRepository } from "@/server/admin/repository";
 import { getSession } from "@/server/auth";
 import { SettingsEditor } from "@/components/admin/admin-controls";
+import { DEFAULT_SEARCH_SETTINGS } from "@/server/admin/types";
 
 export default async function SettingsPage() {
   const [settings, topics, session] = await Promise.all([getAdminRepository().getSettings(), getAdminRepository().listTopics(), getSession()]);
   const canWrite = session?.role === "owner" || session?.role === "admin";
   const topicLabels = new Map(topics.map((t) => [t.id, `${t.nameZhHant}（${t.slug}）`]));
+  const settingsByTopic = new Map(settings.map((s) => [s.topicId, s]));
+  // Every topic gets a row: topics created before this default-settings fix (or via the
+  // one-time seed script) may not have a persisted row yet — show them with the same
+  // defaults new topics get, so saving via the normal PATCH flow creates the row.
+  const rows = topics.map((t) => ({
+    topicId: t.id,
+    settings: settingsByTopic.get(t.id) ?? { topicId: t.id, ...DEFAULT_SEARCH_SETTINGS },
+    isUnsaved: !settingsByTopic.has(t.id),
+  }));
   return (
     <AdminPage title="系統設定" description="搜尋配額、影片長度、freshness 與排名門檻。">
       <div className="admin-panel">
-        {settings.length ? (
+        {rows.length ? (
           <table className="admin-table">
             <thead>
               <tr>
@@ -23,9 +33,9 @@ export default async function SettingsPage() {
               </tr>
             </thead>
             <tbody>
-              {settings.map((s) => (
-                <tr key={s.topicId}>
-                  <td>{topicLabels.get(s.topicId) ?? s.topicId}</td>
+              {rows.map(({ topicId, settings: s, isUnsaved }) => (
+                <tr key={topicId}>
+                  <td>{topicLabels.get(topicId) ?? topicId}{isUnsaved ? <><br/><span className="admin-badge">尚未儲存，目前為預設值</span></> : null}</td>
                   <td>{s.freshnessDays} 天</td>
                   <td>{s.candidateLimit} / {s.topN}</td>
                   <td>{s.minDurationSeconds}–{s.maxDurationSeconds} 秒</td>
@@ -36,10 +46,10 @@ export default async function SettingsPage() {
             </tbody>
           </table>
         ) : (
-          <EmptyState>尚無主題搜尋設定。</EmptyState>
+          <EmptyState>尚無主題。</EmptyState>
         )}
       </div>
-      <SettingsEditor settings={settings} canWrite={canWrite} topicLabels={Object.fromEntries(topicLabels)} />
+      <SettingsEditor settings={rows.map((r) => r.settings)} canWrite={canWrite} topicLabels={Object.fromEntries(topicLabels)} />
     </AdminPage>
   );
 }

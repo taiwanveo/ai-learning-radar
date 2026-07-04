@@ -1,4 +1,5 @@
 import type { AdminActor, AdminRepository, AgentRun, AuditLog, Channel, ContentItem, SearchSettings, Topic } from "./types";
+import { DEFAULT_SEARCH_SETTINGS } from "./types";
 import { PrismaAdminRepository } from "./prisma-repository";
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -15,7 +16,7 @@ export class MemoryAdminRepository implements AdminRepository {
   constructor(topics: Topic[] = []) { this.topics = clone(topics); }
   private log(actor: AdminActor, action: string, entityType: string, entityId: string | null, before: unknown, after: unknown) { this.audit.unshift({ id: id(), adminId: actor.id, action, entityType, entityId, before: clone(before), after: clone(after), createdAt: new Date().toISOString() }); }
   async listTopics() { return clone(this.topics); }
-  async createTopic(input: Omit<Topic, "id">, actor: AdminActor) { if (this.topics.some(t => t.slug === input.slug)) throw new Error("TOPIC_SLUG_EXISTS"); const topic = { ...clone(input), id: id(), keywords: input.keywords.map(k => ({ ...k, id: k.id || id() })) }; this.topics.push(topic); this.log(actor, "create", "topic", topic.id, null, topic); return clone(topic); }
+  async createTopic(input: Omit<Topic, "id">, actor: AdminActor) { if (this.topics.some(t => t.slug === input.slug)) throw new Error("TOPIC_SLUG_EXISTS"); const topic = { ...clone(input), id: id(), keywords: input.keywords.map(k => ({ ...k, id: k.id || id() })) }; this.topics.push(topic); this.settings.set(topic.id, clone({ ...DEFAULT_SEARCH_SETTINGS, topicId: topic.id })); this.log(actor, "create", "topic", topic.id, null, topic); return clone(topic); }
   async updateTopic(topicId: string, input: Partial<Omit<Topic, "id">>, actor: AdminActor) { const index = this.topics.findIndex(t => t.id === topicId); if (index < 0) return null; if (input.slug && this.topics.some(t => t.id !== topicId && t.slug === input.slug)) throw new Error("TOPIC_SLUG_EXISTS"); const before = clone(this.topics[index]); const next = { ...before, ...clone(input), keywords: input.keywords?.map(k => ({ ...k, id: k.id || id() })) ?? before.keywords }; this.topics[index] = next; this.log(actor, "update", "topic", topicId, before, next); return clone(next); }
   async disableTopic(topicId: string, actor: AdminActor) { return this.updateTopic(topicId, { isActive: false }, actor); }
   async getSettings(topicId?: string) { const values = [...this.settings.values()]; return clone(topicId ? values.filter(v => v.topicId === topicId) : values); }
