@@ -15,13 +15,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default async function DashboardPage() {
   const repo = getAdminRepository();
-  const [topics, content, channels, runs] = await Promise.all([repo.listTopics(), repo.listContent(), repo.listChannels(), repo.listRuns()]);
-  const statusBreakdown = Object.entries(content.reduce<Record<string, number>>((acc, item) => { acc[item.status] = (acc[item.status] ?? 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]);
+  const [topics, statusCounts, channels, runs] = await Promise.all([repo.listTopics(), repo.contentStatusCounts(), repo.listChannels(), repo.listRuns()]);
+  const statusBreakdown = Object.entries(statusCounts).sort((a, b) => b[1] - a[1]);
+  const contentTotal = statusBreakdown.reduce((sum, [, count]) => sum + count, 0);
   return (
     <AdminPage title="儀表板" description="內容策展與資料管線的即時概況。">
       <div className="admin-grid">
         <article className="admin-card">
-          <strong>{content.length}</strong>
+          <strong>{contentTotal}</strong>
           <span>有效內容</span>
           <div className="admin-card__breakdown">
             {statusBreakdown.map(([status, count]) => (

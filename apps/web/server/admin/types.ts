@@ -22,6 +22,7 @@ export interface AdminRepository {
   upsertChannel(input: Omit<Channel, "id" | "isActive">, actor: AdminActor): Promise<Channel>;
   disableChannel(id: string, actor: AdminActor): Promise<Channel | null>;
   listContent(query?: string): Promise<ContentItem[]>;
+  contentStatusCounts(): Promise<Record<string, number>>;
   createContent(input: Omit<ContentItem, "id" | "createdAt">, actor: AdminActor): Promise<ContentItem>;
   updateContent(id: string, input: Partial<Omit<ContentItem, "id" | "createdAt" | "sourceContentId" | "sourceUrl">>, actor: AdminActor): Promise<ContentItem | null>;
   deleteContent(id: string, actor: AdminActor): Promise<ContentItem | null>;
