@@ -8,11 +8,11 @@ const DIFFICULTY_LABELS: Record<string, string> = { beginner: "入門", normal: 
 
 export default async function ContentPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const q = (await searchParams).q ?? "";
-  const [content, session] = await Promise.all([getAdminRepository().listContent(q), getSession()]);
+  const [content, topics, session] = await Promise.all([getAdminRepository().listContent(q), getAdminRepository().listTopics(), getSession()]);
   const canWrite = session?.role !== "viewer";
   return (
     <AdminPage title="內容管理" description="搜尋、覆寫 metadata、隱藏或手動新增 YouTube 內容。">
-      <ManualContentForm canWrite={canWrite}/>
+      <ManualContentForm canWrite={canWrite} topics={topics.filter((t) => t.isActive)}/>
       <form className="admin-form admin-search">
         <label>搜尋內容<input name="q" defaultValue={q} placeholder="標題或頻道"/></label>
         <div><button className="admin-button" type="submit">搜尋</button></div>
