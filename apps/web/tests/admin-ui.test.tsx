@@ -46,4 +46,11 @@ describe("admin write controls", () => {
     expect(settingsForm).toContain("不可超過候選上限");
     expect(settingsForm).toContain("需要管理者在「內容管理」頁手動按下「發布」");
   });
+  it("shows the topic's human-readable name in the settings editor heading instead of a raw UUID", () => {
+    const withoutLabels = renderToStaticMarkup(<SettingsEditor settings={[settingsFixture]} canWrite/>);
+    expect(withoutLabels).toContain(`編輯 ${settingsFixture.topicId}`);
+    const withLabels = renderToStaticMarkup(<SettingsEditor settings={[settingsFixture]} canWrite topicLabels={{ [settingsFixture.topicId]: "RAG（rag）" }}/>);
+    expect(withLabels).toContain("編輯 RAG（rag）");
+    expect(withLabels).not.toContain(settingsFixture.topicId);
+  });
 });
