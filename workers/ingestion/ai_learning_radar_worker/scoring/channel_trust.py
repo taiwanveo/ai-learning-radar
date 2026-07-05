@@ -39,10 +39,15 @@ class ChannelTrustSignals:
     subscriber_count: int | None = None
     historical_retention_rate: float | None = None
     historical_average_engagement: float | None = None
+    # Admin-configured 0..1 strength for recommended channels; None keeps the
+    # binary recommended signal.
+    trust_weight: float | None = None
 
     def __post_init__(self) -> None:
         if self.subscriber_count is not None and self.subscriber_count < 0:
             raise ValueError("subscriber_count cannot be negative")
+        if self.trust_weight is not None and not math.isfinite(self.trust_weight):
+            raise ValueError("trust_weight must be finite")
 
 
 def channel_trust_score(
@@ -64,9 +69,13 @@ def channel_trust_score(
     if signals.is_blacklisted:
         return 0.0
 
-    components: list[tuple[float, float]] = [
-        (1.0 if signals.is_recommended else 0.0, weights.recommended)
-    ]
+    if signals.is_recommended:
+        recommended_signal = (
+            _unit(signals.trust_weight) if signals.trust_weight is not None else 1.0
+        )
+    else:
+        recommended_signal = 0.0
+    components: list[tuple[float, float]] = [(recommended_signal, weights.recommended)]
     if signals.subscriber_count is not None:
         subscriber_signal = math.log1p(min(signals.subscriber_count, subscriber_cap)) / math.log1p(
             subscriber_cap

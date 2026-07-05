@@ -38,6 +38,7 @@ export function VideoCard({ video, rank = 1 }: VideoCardProps) {
             <span className="engagement-score" aria-hidden="true">▲ {(video.engagementScore * 100).toFixed(1)}%</span>
             <span className="engagement-tip" role="tooltip" aria-hidden="true">參與度分數 = 按讚數 ÷ 觀看次數。數值越高，代表越高比例的觀眾主動按讚，互動意願越強。</span>
           </span>
+          {video.isPinned ? <span className="tag tag--pinned">📌 置頂</span> : null}
           {video.difficulty === "beginner" ? <span className="tag tag--beginner">入門</span> : null}
           {video.tags.slice(0, 3).map((tag) => <span className="tag" key={tag}>{tag}</span>)}
         </div>

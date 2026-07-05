@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildLearningPath } from "@/server/public/learning-path";
+import { generateLearningPath } from "@/server/public/learning-path";
 import { searchContent } from "@/server/public/repository";
 import { learningPathRequestSchema } from "@/server/public/types";
 
@@ -19,5 +19,6 @@ export async function POST(request: Request) {
   const candidates = search.data.filter((item) => allowedIds.has(item.id));
   if (candidates.length < 3) return NextResponse.json({ error: "至少需要 3 筆有效搜尋結果才能產生學習指引" }, { status: 422 });
 
-  return NextResponse.json(buildLearningPath(query, candidates), { headers: { "Cache-Control": "no-store", "X-Data-Source": search.source } });
+  const { path, source } = await generateLearningPath(query, difficulty, candidates);
+  return NextResponse.json(path, { headers: { "Cache-Control": "no-store", "X-Data-Source": search.source, "X-Learning-Path-Source": source } });
 }

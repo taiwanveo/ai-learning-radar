@@ -253,8 +253,8 @@ ai-learning-radar/
 ```text
 1. 管理者登入
 2. 修改 topics / keywords / thresholds / providers / channels
-3. Next.js API route 寫入 DB
-4. 下一次 worker run 讀取新設定
+3. Next.js API route 寫入 DB（LLM 金鑰以 APP_SECRET_KEY 加密）
+4. 下一次 worker run 讀取新設定（含 BYOK 金鑰與各任務 fallback chain）
 5. 管理者可手動觸發 worker 或透過 GitHub Actions workflow_dispatch 執行
 ```
 

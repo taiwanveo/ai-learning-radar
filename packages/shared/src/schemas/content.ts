@@ -27,6 +27,7 @@ const publicContentBaseSchema = z.object({
   contentType: contentTypeSchema.optional(),
   language: z.string().trim().min(1).nullable(),
   isRecommendedChannel: z.boolean().default(false),
+  isPinned: z.boolean().default(false),
   tags: z.array(z.string().trim().min(1)).max(30),
   suitableFor: z.string().trim().min(1),
   shortSummary: z.string().trim().min(1),

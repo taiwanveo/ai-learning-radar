@@ -61,6 +61,8 @@ DATABASE_URL=postgresql://...
 APP_SECRET_KEY=<same-as-web>
 YOUTUBE_API_KEY=...
 WORKER_TRIGGER_SECRET=...
+# LLM 設定優先使用後台 /admin/llm 的 BYOK 金鑰與 fallback chain（以
+# APP_SECRET_KEY 解密）；以下環境變數為後備方案，可留空。
 LLM_PROVIDER=openai
 LLM_MODEL=<provider-model-id>
 TRANSCRIPT_MODE=disabled
@@ -72,10 +74,9 @@ OPENAI_API_KEY=...
 # OPENROUTER_API_KEY=...
 ```
 
-LLM API key 若採 BYOK，主要存在 DB encrypted，不一定放 GitHub secrets。但 worker 必須能透過 `APP_SECRET_KEY` 解密 DB 中的 key。
-
-Phase 2 在 Admin/BYOK 尚未完成前，worker 使用上述 provider 環境變數。
-完成 T04-06 後應優先改讀 DB 中的加密 key 與 fallback chain，環境變數僅保留為部署備援。
+LLM API key 採 BYOK 時存在 DB（加密），不需放 GitHub secrets；worker 會以
+`APP_SECRET_KEY` 解密 DB 中的 key，並依 `/admin/llm` 設定的各任務 fallback
+chain 呼叫模型。上述 provider 環境變數僅作為 DB 無可用設定時的部署備援。
 
 ## 3. GitHub Actions 排程
 
@@ -236,6 +237,8 @@ QUIZ_ENABLED=false
 
 ```bash
 gh workflow run ingest-daily.yml -f topic_id=<topic_uuid> -f dry_run=false
+# 單片影片分析（後台「手動新增 YouTube」也會自動觸發這個模式）
+gh workflow run ingest-daily.yml -f video_url='https://www.youtube.com/watch?v=…'
 ```
 
 ### 8.3 管理後台

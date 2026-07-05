@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID
 
+from .llm.byok import TaskRoutedLLM, build_byok_llm
 from .llm.providers import (
     AnthropicProvider,
     GeminiProvider,
@@ -53,6 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     backfill = subparsers.add_parser("backfill", help="Backfill a historical date range")
     backfill.add_argument("--days", type=int, required=True)
+    backfill.add_argument("--topic-id")
+    backfill.add_argument("--dry-run", action="store_true")
 
     subparsers.add_parser("validate-config", help="Validate worker configuration")
 
@@ -65,14 +68,19 @@ def build_parser() -> argparse.ArgumentParser:
 def configuration_errors(environment: Mapping[str, str] | None = None) -> list[str]:
     env = environment or os.environ
     errors: list[str] = []
-    for name in ("DATABASE_URL", "YOUTUBE_API_KEY", "LLM_MODEL"):
+    for name in ("DATABASE_URL", "YOUTUBE_API_KEY"):
         if not env.get(name, "").strip():
             errors.append(f"missing {name}")
+    # With APP_SECRET_KEY present the worker can decrypt admin-managed (BYOK)
+    # keys from the database, so environment LLM configuration is optional.
+    byok_possible = bool(env.get("APP_SECRET_KEY", "").strip())
+    if not env.get("LLM_MODEL", "").strip() and not byok_possible:
+        errors.append("missing LLM_MODEL")
     provider = env.get("LLM_PROVIDER", "openai").strip().lower()
     key_name = PROVIDER_KEYS.get(provider)
     if key_name is None:
         errors.append(f"unsupported LLM_PROVIDER: {provider}")
-    elif not env.get(key_name, "").strip():
+    elif not env.get(key_name, "").strip() and not byok_possible:
         errors.append(f"missing {key_name} for {provider}")
     transcript_mode = env.get("TRANSCRIPT_MODE", "disabled").strip().lower()
     if transcript_mode not in TRANSCRIPT_MODES:
@@ -87,14 +95,43 @@ def build_llm_runner(environment: Mapping[str, str] | None = None) -> LLMTaskRun
     env = environment or os.environ
     provider_name = env.get("LLM_PROVIDER", "openai").strip().lower()
     key_name = PROVIDER_KEYS[provider_name]
-    api_key = env[key_name]
+    api_key = env.get(key_name, "").strip()
+    model = env.get("LLM_MODEL", "").strip()
+    if not api_key or not model:
+        raise RuntimeError(
+            "no usable LLM configuration: add provider keys and fallback chains in "
+            "/admin/llm (BYOK) or set LLM_PROVIDER/LLM_MODEL and the provider key "
+            "environment variables"
+        )
     providers = {
         "openai": OpenAIProvider,
         "gemini": GeminiProvider,
         "anthropic": AnthropicProvider,
         "openrouter": OpenRouterProvider,
     }
-    return LLMTaskRunner(providers[provider_name](api_key), model=env["LLM_MODEL"])
+    return LLMTaskRunner(providers[provider_name](api_key), model=model)
+
+
+def build_llm(
+    repository: PostgresRepository | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> LLMTaskRunner | TaskRoutedLLM:
+    """Prefer admin-managed BYOK config from the DB; fall back to env vars."""
+    env = environment or os.environ
+    app_secret_key = env.get("APP_SECRET_KEY", "").strip()
+    if repository is not None and app_secret_key:
+        try:
+            llm = build_byok_llm(
+                repository.load_llm_api_keys(),
+                repository.load_llm_fallback_chains(),
+                app_secret_key,
+            )
+        except Exception as exc:  # noqa: BLE001 - env vars are the designed fallback
+            print(f"BYOK configuration unavailable ({exc}); using environment", file=sys.stderr)
+            llm = None
+        if llm is not None:
+            return llm
+    return build_llm_runner(env)
 
 
 def build_transcript_adapter(
@@ -109,6 +146,22 @@ def build_transcript_adapter(
 
 
 def _run_daily(args: argparse.Namespace) -> int:
+    return _run_ingestion(args, trigger="scheduled")
+
+
+def _run_backfill(args: argparse.Namespace) -> int:
+    if not 1 <= args.days <= 3650:
+        print("--days must be between 1 and 3650", file=sys.stderr)
+        return 2
+    return _run_ingestion(args, trigger="backfill", freshness_days=args.days)
+
+
+def _run_ingestion(
+    args: argparse.Namespace,
+    *,
+    trigger: str,
+    freshness_days: int | None = None,
+) -> int:
     errors = configuration_errors()
     if errors:
         if args.dry_run:
@@ -124,24 +177,30 @@ def _run_daily(args: argparse.Namespace) -> int:
     with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as connection:
         repository = PostgresRepository(connection)
         topic_id = UUID(args.topic_id) if args.topic_id else None
-        run_id = UUID(args.run_id) if args.run_id else None
+        run_id_arg = getattr(args, "run_id", None)
+        run_id = UUID(run_id_arg) if run_id_arg else None
         topics = repository.load_active_topics(topic_id)
         if not topics:
             if run_id is not None and not args.dry_run:
                 repository.finish_run(run_id, "failed", {}, "no active topics matched the request")
             print("No active topics matched the request", file=sys.stderr)
             return 2
+        if freshness_days is not None:
+            topics = [
+                {**topic, "settings": {**topic["settings"], "freshness_days": freshness_days}}
+                for topic in topics
+            ]
         pipeline = DailyDigestPipeline(
             youtube=YouTubeAdapter(os.environ["YOUTUBE_API_KEY"]),
             transcripts=build_transcript_adapter(),
-            llm=build_llm_runner(),
+            llm=build_llm(repository),
             repository=repository,
             quiz_enabled=_enabled(os.environ, "QUIZ_ENABLED", default=False),
         )
         report = pipeline.run(
             topics,
             dry_run=args.dry_run,
-            trigger="manual" if run_id is not None else "scheduled",
+            trigger="manual" if run_id is not None else trigger,
             run_id=run_id,
         )
     print(json.dumps(report.as_dict(), ensure_ascii=False, default=str))
@@ -223,7 +282,7 @@ def _run_test_video(args: argparse.Namespace) -> int:
         pipeline = DailyDigestPipeline(
             youtube=_SingleVideoAdapter(youtube, metadata[0]),  # type: ignore[arg-type]
             transcripts=build_transcript_adapter(),
-            llm=build_llm_runner(),
+            llm=build_llm(repository),
             repository=repository,
             quiz_enabled=_enabled(os.environ, "QUIZ_ENABLED", default=False),
         )
@@ -237,18 +296,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "daily":
         return _run_daily(args)
+    if args.command == "backfill":
+        return _run_backfill(args)
     if args.command == "test-video":
         return _run_test_video(args)
-    if args.command == "validate-config":
-        errors = configuration_errors()
-        if errors:
-            print("Invalid configuration: " + "; ".join(errors), file=sys.stderr)
-            return 2
-        print("Configuration is valid")
-        return 0
-
-    print(f"Backfill pipeline is not implemented yet (days={args.days})", file=sys.stderr)
-    return 2
+    errors = configuration_errors()
+    if errors:
+        print("Invalid configuration: " + "; ".join(errors), file=sys.stderr)
+        return 2
+    print("Configuration is valid")
+    return 0
 
 
 if __name__ == "__main__":

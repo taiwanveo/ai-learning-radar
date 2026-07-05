@@ -21,6 +21,7 @@ const base: DigestItem = {
   difficulty: "normal",
   language: "zh-Hant",
   isRecommendedChannel: false,
+  isPinned: false,
   tags: [],
   suitableFor: "所有人",
   shortSummary: "摘要",

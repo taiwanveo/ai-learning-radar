@@ -244,10 +244,13 @@ def calculate_snapshot_scores(
             + weights.tutorial_quality * item.tutorial_quality_score
             + weights.channel_trust * item.channel_trust_score
         )
-        boost = config.recommended_boost if candidate.channel_signals.is_recommended else 0.0
-        blacklist = (
-            config.blacklist_penalty if candidate.channel_signals.is_blacklisted else 0.0
+        signals = candidate.channel_signals
+        # The admin-configured trust weight scales the flat recommendation boost.
+        trust_scale = (
+            min(1.0, max(0.0, signals.trust_weight)) if signals.trust_weight is not None else 1.0
         )
+        boost = config.recommended_boost * trust_scale if signals.is_recommended else 0.0
+        blacklist = config.blacklist_penalty if signals.is_blacklisted else 0.0
         below_guardrail = (
             item.view_velocity < config.min_views_per_day
             or item.engagement_score < config.min_engagement_score

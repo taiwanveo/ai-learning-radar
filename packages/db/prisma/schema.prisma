@@ -175,7 +175,7 @@ model TopicSearchSetting {
   maxDurationSeconds     Int      @default(7200) @map("max_duration_seconds")
   excludeShorts          Boolean  @default(true) @map("exclude_shorts")
   minViewCount           BigInt   @default(0) @map("min_view_count")
-  minEngagementScore     Decimal  @default(0.05) @map("min_engagement_score") @db.Decimal(8, 6)
+  minEngagementScore     Decimal  @default(0.02) @map("min_engagement_score") @db.Decimal(8, 6)
   growthGuardrailEnabled Boolean  @default(false) @map("growth_guardrail_enabled")
   minViewsPerDay         Int      @default(250) @map("min_views_per_day")
   autoPublish            Boolean  @default(true) @map("auto_publish")
@@ -202,7 +202,7 @@ model Channel {
   videoCount           BigInt?         @map("video_count")
   viewCount            BigInt?         @map("view_count")
   listType             ChannelListType @default(neutral) @map("list_type")
-  trustWeight          Decimal         @default(0) @map("trust_weight") @db.Decimal(8, 4)
+  trustWeight          Decimal         @default(1) @map("trust_weight") @db.Decimal(8, 4)
   recommendationReason String?         @map("recommendation_reason")
   metadataJson         Json?           @map("metadata_json") @db.JsonB
   lastFetchedAt        DateTime?       @map("last_fetched_at") @db.Timestamptz(6)

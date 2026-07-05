@@ -4,7 +4,7 @@ import { getSession } from "@/server/auth";
 import { TriggerRunButton } from "@/components/admin/admin-controls";
 import { RunEventsButton } from "@/components/admin/run-events-button";
 
-const TRIGGER_LABELS: Record<string, string> = { manual: "手動", scheduled: "排程" };
+const TRIGGER_LABELS: Record<string, string> = { manual: "手動", scheduled: "排程", backfill: "回補", test: "單片測試" };
 const STATUS_LABELS: Record<string, string> = { queued: "排隊中", running: "執行中", succeeded: "成功", failed: "失敗" };
 
 export default async function RunsPage() {

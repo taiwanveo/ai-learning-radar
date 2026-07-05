@@ -16,7 +16,7 @@ export const DEFAULT_SEARCH_SETTINGS: Omit<SearchSettings, "topicId"> = {
   maxDurationSeconds: 7200,
   excludeShorts: true,
   minViewCount: 0,
-  minEngagementScore: 0.05,
+  minEngagementScore: 0.02,
   growthGuardrailEnabled: false,
   minViewsPerDay: 250,
   autoPublish: true,
@@ -28,7 +28,7 @@ export const DEFAULT_SEARCH_SETTINGS: Omit<SearchSettings, "topicId"> = {
 export interface Channel { id: string; sourceChannelId: string; handle: string | null; title: string; listType: "neutral" | "recommended" | "blacklisted"; trustWeight: number; recommendationReason: string | null; isActive: boolean }
 export interface ContentItem { id: string; sourceContentId: string; sourceUrl: string; title: string; channelTitle: string | null; shortSummary: string; difficulty: "beginner" | "normal"; tags: string[]; status: "discovered" | "published" | "hidden" | "deleted"; hiddenReason: string | null; isPinned: boolean; topicId: string | null; createdAt: string }
 export interface RunEvent { id: string; phase: string; level: "info" | "warning" | "error"; message: string; createdAt: string }
-export interface AgentRun { id: string; status: "queued" | "running" | "succeeded" | "failed"; trigger: "scheduled" | "manual"; startedAt: string; finishedAt: string | null; statistics: Record<string, number>; events: RunEvent[] }
+export interface AgentRun { id: string; status: "queued" | "running" | "succeeded" | "failed"; trigger: "scheduled" | "manual" | "backfill" | "test"; startedAt: string; finishedAt: string | null; statistics: Record<string, number>; events: RunEvent[] }
 export interface AuditLog { id: string; adminId: string; action: string; entityType: string; entityId: string | null; before: unknown; after: unknown; createdAt: string }
 
 export interface AdminRepository {

@@ -115,6 +115,40 @@ class PostgresRepository:
             for row in cursor.fetchall()
         }
 
+    def load_llm_api_keys(self) -> dict[str, dict[str, str]]:
+        """Latest active encrypted API key envelope per provider (BYOK)."""
+        cursor = self._connection.execute(
+            """
+            SELECT DISTINCT ON (provider) provider, encrypted_key, encryption_iv, encryption_tag
+            FROM llm_api_keys
+            WHERE is_active = true
+            ORDER BY provider, updated_at DESC
+            """
+        )
+        return {
+            str(row[0]): {
+                "encrypted_key": str(row[1]),
+                "encryption_iv": str(row[2]),
+                "encryption_tag": str(row[3]),
+            }
+            for row in cursor.fetchall()
+        }
+
+    def load_llm_fallback_chains(self) -> dict[str, list[tuple[str, str]]]:
+        """Active provider/model fallback chain per task, in priority order."""
+        cursor = self._connection.execute(
+            """
+            SELECT task_type::text, provider, model_id
+            FROM llm_model_settings
+            WHERE is_active = true
+            ORDER BY task_type, priority
+            """
+        )
+        chains: dict[str, list[tuple[str, str]]] = {}
+        for row in cursor.fetchall():
+            chains.setdefault(str(row[0]), []).append((str(row[1]), str(row[2])))
+        return chains
+
     def create_run(
         self,
         trigger_type: str,

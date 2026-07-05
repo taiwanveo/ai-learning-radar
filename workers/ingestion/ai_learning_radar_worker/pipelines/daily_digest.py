@@ -477,6 +477,7 @@ class DailyDigestPipeline:
             topic_id,
             content_item_id=content_id,
         )
+        trust_weight = policy.get("trust_weight")
         return _Processed(
             content_id,
             item,
@@ -485,8 +486,12 @@ class DailyDigestPipeline:
                 is_recommended=policy.get("list_type") == "recommended",
                 is_blacklisted=policy.get("list_type") == "blacklisted",
                 subscriber_count=channel.subscriber_count if channel else None,
+                trust_weight=float(trust_weight) if trust_weight is not None else None,
             ),
         )
+
+    # YouTube Shorts can run up to three minutes.
+    SHORTS_MAX_DURATION_SECONDS = 180
 
     def _filter_reason(
         self,
@@ -498,12 +503,20 @@ class DailyDigestPipeline:
     ) -> str | None:
         if policy.get("list_type") == "blacklisted":
             return "blacklisted_channel"
+        if (
+            bool(settings.get("exclude_shorts"))
+            and item.duration_seconds <= self.SHORTS_MAX_DURATION_SECONDS
+        ):
+            return "shorts_excluded"
         if not int(settings["min_duration_seconds"]) <= item.duration_seconds <= int(
             settings["max_duration_seconds"]
         ):
             return "duration_out_of_range"
         if item.view_count < int(settings["min_view_count"]):
             return "below_min_view_count"
+        min_engagement = float(settings.get("min_engagement_score", 0) or 0)
+        if min_engagement > 0 and item.like_count / max(item.view_count, 1) < min_engagement:
+            return "below_min_engagement"
         if require_caption and not item.caption_available:
             return "caption_unavailable"
         return None

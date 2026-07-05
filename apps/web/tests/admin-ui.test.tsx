@@ -38,7 +38,7 @@ describe("admin write controls", () => {
     expect(topicForm).toContain("主題的英文識別代碼");
     const channelForm = renderToStaticMarkup(<ChannelCreateForm canWrite/>);
     expect(channelForm).toContain("YouTube 頻道的原始識別碼");
-    expect(channelForm).toContain("影響此頻道在排名時的加減分");
+    expect(channelForm).toContain("推薦頻道的信任強度");
     const contentForm = renderToStaticMarkup(<ManualContentForm canWrite topics={[topicFixture]}/>);
     expect(contentForm).toContain("RAG（rag）");
     const settingsForm = renderToStaticMarkup(<SettingsEditor settings={[settingsFixture]} canWrite/>);

@@ -10,12 +10,12 @@ export function githubDispatchConfig(env: NodeJS.ProcessEnv = process.env): Disp
   return { token, repository, ref: env.GITHUB_WORKFLOW_REF?.trim() || "main", workflow: env.GITHUB_WORKFLOW_FILE?.trim() || "ingest-daily.yml" };
 }
 
-export async function dispatchIngestWorkflow(runId: string, config = githubDispatchConfig()): Promise<void> {
+export async function dispatchIngestWorkflow(inputs: Record<string, string>, config = githubDispatchConfig()): Promise<void> {
   if (!config) throw new Error("WORKFLOW_DISPATCH_NOT_CONFIGURED");
   const response = await fetch(`https://api.github.com/repos/${config.repository}/actions/workflows/${config.workflow}/dispatches`, {
     method: "POST",
     headers: { Authorization: `Bearer ${config.token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
-    body: JSON.stringify({ ref: config.ref, inputs: { run_id: runId } }),
+    body: JSON.stringify({ ref: config.ref, inputs }),
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");

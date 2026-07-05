@@ -25,6 +25,10 @@ on:
         description: Queued agent_runs UUID to claim (set by the admin console)
         required: false
         type: string
+      video_url:
+        description: Analyze a single YouTube video instead of the daily run
+        required: false
+        type: string
 
 jobs:
   ingest:
@@ -33,6 +37,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
       LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
       LLM_MODEL: ${{ vars.LLM_MODEL }}
       TRANSCRIPT_MODE: disabled
@@ -44,6 +49,7 @@ jobs:
       TOPIC_ID: ${{ inputs.topic_id }}
       DRY_RUN: ${{ inputs.dry_run }}
       RUN_ID: ${{ inputs.run_id }}
+      VIDEO_URL: ${{ inputs.video_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -61,8 +67,13 @@ jobs:
       - name: Run daily ingestion
         shell: bash
         run: |
-          args=(daily)
-          if [[ -n "$TOPIC_ID" ]]; then args+=(--topic-id "$TOPIC_ID"); fi
-          if [[ "$DRY_RUN" == "true" ]]; then args+=(--dry-run); fi
-          if [[ -n "$RUN_ID" ]]; then args+=(--run-id "$RUN_ID"); fi
+          if [[ -n "$VIDEO_URL" ]]; then
+            args=(test-video --url "$VIDEO_URL")
+            if [[ -n "$TOPIC_ID" ]]; then args+=(--topic-id "$TOPIC_ID"); fi
+          else
+            args=(daily)
+            if [[ -n "$TOPIC_ID" ]]; then args+=(--topic-id "$TOPIC_ID"); fi
+            if [[ "$DRY_RUN" == "true" ]]; then args+=(--dry-run); fi
+            if [[ -n "$RUN_ID" ]]; then args+=(--run-id "$RUN_ID"); fi
+          fi
           python -m ai_learning_radar_worker.cli "${args[@]}"

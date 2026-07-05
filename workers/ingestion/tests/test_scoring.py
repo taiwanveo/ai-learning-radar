@@ -102,6 +102,40 @@ def test_radar_score_uses_injected_weights_and_recommended_boost() -> None:
     assert recommended.recommended_boost_applied == 0.2
 
 
+def test_trust_weight_scales_recommended_boost_and_trust_component() -> None:
+    config = ScoringConfig(
+        weights=RadarWeights(
+            fresh_engagement=1,
+            view_velocity=0,
+            comment_signal=0,
+            topic_relevance=0,
+            tutorial_quality=0,
+            channel_trust=0,
+        ),
+        recommended_boost=0.2,
+    )
+    half, full = calculate_snapshot_scores(
+        [
+            candidate(
+                "half",
+                channel_signals=ChannelTrustSignals(is_recommended=True, trust_weight=0.5),
+            ),
+            candidate(
+                "full",
+                channel_signals=ChannelTrustSignals(is_recommended=True),
+            ),
+        ],
+        now=NOW,
+        config=config,
+    )
+    assert half.recommended_boost_applied == pytest.approx(0.1)
+    assert full.recommended_boost_applied == pytest.approx(0.2)
+    assert channel_trust_score(
+        ChannelTrustSignals(is_recommended=True, trust_weight=0.5)
+    ) == pytest.approx(0.5)
+    assert channel_trust_score(ChannelTrustSignals(is_recommended=True)) == pytest.approx(1.0)
+
+
 def test_blacklist_penalty_and_exclusion_are_both_recorded() -> None:
     result = calculate_snapshot_scores(
         [candidate("blocked", channel_signals=ChannelTrustSignals(is_blacklisted=True))],

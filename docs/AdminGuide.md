@@ -85,6 +85,11 @@ viewer 看得到列表但不會出現任何寫入按鈕。沒有權限的功能�
 | Topic UUID（選填） | 要掛到哪個主題底下，可留空 |
 | 立即發布 | 勾選後直接以 `published` 狀態顯示在前台 |
 
+送出後系統會立即建立一筆「等待內容分析」的紀錄，並自動觸發 GitHub Actions
+的單片分析（test-video）：worker 會補齊影片 metadata、觀看統計、AI 分類與
+摘要，數分鐘後自動更新這筆內容。若觸發失敗（例如 GitHub 設定缺漏），紀錄
+仍會建立，可稍後在 GitHub Actions 以 `video_url` 輸入手動執行。
+
 同一支影片（相同 video ID）重複新增會回傳 `CONTENT_EXISTS` 錯誤。
 
 ### 3.3 發布 / 隱藏 / 刪除
@@ -134,7 +139,7 @@ Slug 不可重複，重複會回傳 `TOPIC_SLUG_EXISTS`。
 | Channel ID | YouTube channel ID（`UC…` 開頭） |
 | 名稱 | 頻道顯示名稱 |
 | Handle | 選填，例如 `@channel` |
-| 權重 | -10 ～ 10，影響 channel trust score |
+| 信任權重 | 0 ～ 1，按比例縮放推薦頻道的排名加分（1 = 完整加分） |
 
 同一個 Channel ID 再次送出會直接更新（upsert）原有規則。
 
@@ -150,10 +155,15 @@ Slug 不可重複，重複會回傳 `TOPIC_SLUG_EXISTS`。
 |---|---|
 | Freshness 天數 | 只搜尋最近 N 天發布的影片（1–3650） |
 | 候選上限 | 每日每主題最多處理的候選影片數（1–500） |
-| Top N | 每日精選顯示的數量（1–100，預設 20） |
+| Top N | 每日排名 snapshot 的名次數量（1–100，預設 20），即前台「今日精選」預設顯示的排名 |
 | 最短 / 最長秒數 | 影片長度範圍，低於下限（預設 5 分鐘）可排除大多數 Shorts |
-| 最低互動率 | engagement score 門檻（0–1） |
+| 最低觀看數 | 觀看次數低於此值的影片在收錄階段被排除（0 = 不過濾） |
+| 最低互動率 | 按讚數 ÷ 觀看次數的門檻（0–1），低於門檻的影片在收錄階段被排除（0 = 不過濾） |
+| 排除 Shorts | 開啟後，長度 180 秒以下的影片在收錄階段被排除 |
+| 成長護欄 / 最低日均觀看 | 開啟後，日均觀看或互動率低於門檻的影片在排名時扣分（不會被排除） |
 | 自動發布 | 勾選後 pipeline 分析完的影片自動 `published`；不勾則需在 Content 手動發布 |
+
+排程為全域設定：GitHub Actions 每日台北時間 06:00 觸發所有主題，無法分主題排程。
 
 ---
 
@@ -184,6 +194,12 @@ anthropic:claude-haiku-4-5
 
 primary 失敗時會依序改用下一個。
 
+這裡的金鑰與 fallback chain 是 pipeline 實際使用的設定：worker 以
+`APP_SECRET_KEY` 解密金鑰並依各任務的 chain 呼叫模型（需在 GitHub Actions
+secrets 設定與 Web 相同的 `APP_SECRET_KEY`）。前台「產生學習順序建議」則使用
+`learning_path` 任務的 chain。若資料庫沒有可用的金鑰或 chain，worker 會退回
+使用環境變數 `LLM_PROVIDER` / `LLM_MODEL` 與對應的 provider key。
+
 ---
 
 ## 8. Admins（管理員帳號）
@@ -200,8 +216,9 @@ primary 失敗時會依序改用下一個。
 
 路徑：`/admin/runs`
 
-- 每列一個 run：開始時間、觸發方式（`manual` / `scheduled`）、狀態
-  （`queued` / `succeeded` / `partial_failed` / `failed`）、各 phase 統計與失敗事件。
+- 每列一個 run：開始時間、觸發方式（`manual` 手動 / `scheduled` 排程 /
+  `backfill` 回補 / `test` 單片測試）、狀態（`queued` / `running` / `succeeded` /
+  `partial_failed` / `failed`）、各 phase 統計與失敗事件。
 - **手動觸發 Run**：按右上角按鈕建立一筆 `queued` run，並透過 GitHub Actions
   `workflow_dispatch` 啟動 ingest-daily workflow；worker 啟動後會把該筆 run 標為
   `running` 並回寫統計。同一位管理者 **60 秒內只能觸發一次**（rate limit）。
@@ -214,7 +231,11 @@ primary 失敗時會依序改用下一個。
 .venv/bin/python -m ai_learning_radar_worker.cli validate-config
 .venv/bin/python -m ai_learning_radar_worker.cli daily --dry-run
 .venv/bin/python -m ai_learning_radar_worker.cli daily
+.venv/bin/python -m ai_learning_radar_worker.cli backfill --days 180
 ```
+
+`backfill --days N` 會以過去 N 天為搜尋範圍重跑一次收錄（其餘設定沿用各主題
+現有設定），適合新主題建立後回補歷史內容。
 
 `--dry-run` 會照常呼叫 YouTube / LLM API，但不寫入任何 run、內容、分數或
 snapshot 紀錄。

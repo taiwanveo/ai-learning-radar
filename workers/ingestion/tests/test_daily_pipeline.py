@@ -223,6 +223,45 @@ def test_dry_run_performs_no_repository_writes() -> None:
     assert repository.calls == []
 
 
+def _metadata(video_id: str, *, duration: int, views: int, likes: int) -> VideoMetadata:
+    return VideoMetadata(
+        video_id=video_id,
+        title=f"{video_id} AI 入門",
+        description="教學",
+        channel_id="channel-1",
+        channel_title="頻道",
+        published_at=NOW,
+        thumbnail_url=None,
+        duration_seconds=duration,
+        view_count=views,
+        like_count=likes,
+        comment_count=3,
+        default_language="zh-Hant",
+        caption_available=True,
+        raw={},
+    )
+
+
+def test_filter_reason_enforces_shorts_and_engagement_gates() -> None:
+    pipeline = build_pipeline(FakeRepository())
+    settings = {
+        **topic()["settings"],
+        "exclude_shorts": True,
+        "min_duration_seconds": 0,
+        "min_engagement_score": 0.05,
+    }
+    short = _metadata("short", duration=120, views=1_000, likes=100)
+    low_engagement = _metadata("low", duration=600, views=1_000, likes=10)
+    healthy = _metadata("ok", duration=600, views=1_000, likes=100)
+
+    def reason(item: VideoMetadata) -> str | None:
+        return pipeline._filter_reason(item, settings, {}, require_caption=False)
+
+    assert reason(short) == "shorts_excluded"
+    assert reason(low_engagement) == "below_min_engagement"
+    assert reason(healthy) is None
+
+
 def test_manual_run_claims_existing_queued_run() -> None:
     repository = FakeRepository()
     run_id = uuid5(NAMESPACE_URL, "queued-run")

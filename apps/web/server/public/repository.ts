@@ -87,6 +87,7 @@ function toDetail(row: DatabaseContent): ContentDetail {
     contentType: rawString(summary?.rawJson, "content_type") ?? undefined,
     language: row.language,
     isRecommendedChannel: row.channel?.listType === "recommended",
+    isPinned: Boolean(row.isPinned),
     tags: row.tags.map(({ tag }: any) => tag.name),
     suitableFor: summary?.suitableFor ?? "希望快速掌握這個主題的學習者",
     shortSummary: summary?.shortSummary ?? row.description ?? "此內容尚待補充摘要。",
@@ -107,7 +108,12 @@ function digestItem(content: ContentDetail): DigestItem {
   return publicDigestItemSchema.parse(item);
 }
 
-function applyDemoFilters(items: ContentDetail[], query: DigestQuery): ContentDetail[] {
+function applyDemoFilters(
+  items: ContentDetail[],
+  query: DigestQuery,
+  // With ranked snapshot input, the default sort keeps the snapshot rank order.
+  preserveDefaultOrder = false,
+): ContentDetail[] {
   const end = query.date ? new Date(`${query.date}T23:59:59.999+08:00`).getTime() : Number.POSITIVE_INFINITY;
   const publishedAfter = query.published === "all"
     ? Number.NEGATIVE_INFINITY
@@ -127,7 +133,7 @@ function applyDemoFilters(items: ContentDetail[], query: DigestQuery): ContentDe
     const topicNeedle = query.topic.toLowerCase().replaceAll("-", " ");
     return query.topic === "artificial-intelligence" || item.topicNames.some((topic) => topic.toLowerCase().includes(topicNeedle));
   });
-  return filtered.sort((a, b) => {
+  const sorted = query.sort === "default" && preserveDefaultOrder ? filtered : filtered.sort((a, b) => {
     if (query.sort === "views" || query.sort === "popular") return b.viewCount - a.viewCount;
     if (query.sort === "engagement") return b.engagementScore - a.engagementScore;
     if (query.sort === "newest" || query.sort === "latest") return Date.parse(b.publishedAt ?? "0") - Date.parse(a.publishedAt ?? "0");
@@ -136,7 +142,9 @@ function applyDemoFilters(items: ContentDetail[], query: DigestQuery): ContentDe
       return difficultyOrder || (b.radarScore ?? b.freshEngagementScore) - (a.radarScore ?? a.freshEngagementScore);
     }
     return (b.radarScore ?? b.freshEngagementScore) - (a.radarScore ?? a.freshEngagementScore);
-  }).slice(0, query.limit);
+  });
+  // Admin-pinned items always surface first, keeping their relative order.
+  return [...sorted.filter((item) => item.isPinned), ...sorted.filter((item) => !item.isPinned)].slice(0, query.limit);
 }
 
 export type PublicTopic = { slug: string; name: string };
@@ -171,23 +179,48 @@ export async function getDigest(query: DigestQuery): Promise<PublicData<DigestRe
   if (!topic) {
     return { source: "database", data: publicDigestResponseSchema.parse({ date, topic: { id: "00000000-0000-4000-8000-000000000000", slug: query.topic, name: query.topic }, items: [] }) };
   }
-  const rows = await database().contentItem.findMany({
+  const dateEnd = new Date(`${date}T23:59:59.999+08:00`);
+
+  // The worker writes a ranked Top-N snapshot per topic per day; the digest
+  // serves the latest snapshot at or before the requested date and falls back
+  // to the raw published list only when no snapshot exists yet.
+  const snapshot = await database().dailyDigestSnapshot.findFirst({
+    where: { topicId: topic.id, snapshotDate: { lte: dateEnd } },
+    orderBy: { snapshotDate: "desc" },
+    include: { items: { orderBy: { rank: "asc" }, include: { contentItem: { include: contentInclude } } } },
+  });
+  let rows: DatabaseContent[];
+  if (snapshot) {
+    rows = snapshot.items.map((item: any) => item.contentItem).filter((row: DatabaseContent) => row.status === "published");
+  } else {
+    rows = await database().contentItem.findMany({
+      where: {
+        status: "published",
+        publishedAt: { lte: dateEnd },
+        topics: { some: { topicId: topic.id } },
+      },
+      include: contentInclude,
+      orderBy: { publishedAt: "desc" },
+      take: 100,
+    });
+  }
+  // Pinned published content in this topic always joins the digest, even when
+  // it did not make the day's snapshot.
+  const pinned = await database().contentItem.findMany({
     where: {
       status: "published",
-      publishedAt: { lte: new Date(`${date}T23:59:59.999+08:00`) },
+      isPinned: true,
       topics: { some: { topicId: topic.id } },
-      ...(query.difficulty === "all" ? {} : { difficulty: query.difficulty }),
-      ...(query.language ? { language: query.language } : {}),
-      ...(query.recommended === "all" ? {} : { channel: { listType: query.recommended === "true" ? "recommended" : { not: "recommended" as const } } }),
+      OR: [{ publishedAt: { lte: dateEnd } }, { publishedAt: null }],
     },
     include: contentInclude,
-    orderBy: { publishedAt: "desc" },
-    take: 100,
   });
+  const seen = new Set(rows.map((row: DatabaseContent) => row.id));
+  rows = [...rows, ...pinned.filter((row: DatabaseContent) => !seen.has(row.id))];
   const details = rows.map(toDetail);
   return {
     source: "database",
-    data: publicDigestResponseSchema.parse({ date, topic: { id: topic.id, slug: topic.slug, name: topic.nameZhHant }, items: applyDemoFilters(details, { ...query, topic: "artificial-intelligence" }).map(digestItem) }),
+    data: publicDigestResponseSchema.parse({ date, topic: { id: topic.id, slug: topic.slug, name: topic.nameZhHant }, items: applyDemoFilters(details, { ...query, topic: "artificial-intelligence" }, Boolean(snapshot)).map(digestItem) }),
   };
 }
 

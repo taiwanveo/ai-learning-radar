@@ -757,6 +757,16 @@ html[data-theme="light"] .tag--beginner {
   color: var(--accent-strong);
 }
 
+.tag--pinned {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+html[data-theme="light"] .tag--pinned {
+  color: var(--accent-strong);
+}
+
 .video-card__summary {
   display: -webkit-box;
   overflow: hidden;

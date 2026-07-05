@@ -38,7 +38,7 @@ export const defaultSearchSettings = {
   maxDurationSeconds: 7200,
   excludeShorts: true,
   minViewCount: 0n,
-  minEngagementScore: "0.050000",
+  minEngagementScore: "0.020000",
   growthGuardrailEnabled: false,
   minViewsPerDay: 250,
   autoPublish: true,
