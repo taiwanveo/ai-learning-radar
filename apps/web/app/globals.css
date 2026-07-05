@@ -400,12 +400,26 @@ html[data-theme="dark"] .theme-toggle__moon {
 /* --------------------------------------------------------------- filter bar */
 .filter-bar {
   display: flex;
+  flex-direction: column;
   padding: 0.75rem 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+  gap: 0.6rem;
+}
+
+.filter-bar__row {
+  display: flex;
   align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.filter-bar__row--secondary {
+  justify-content: flex-start;
+}
+
+.filter-bar__row--secondary .sort-button {
+  margin-left: 6.5rem;
 }
 
 .filter-bar__items {
@@ -1326,9 +1340,13 @@ html[data-theme="light"] .quiz-option--correct .quiz-option__verdict {
     gap: 0.6rem;
   }
 
-  .filter-bar {
+  .filter-bar__row {
     overflow-x: auto;
-    align-items: flex-end;
+    flex-wrap: nowrap;
+  }
+
+  .filter-bar__row--secondary .sort-button {
+    margin-left: 0.55rem;
   }
 
   .filter-bar__items {
