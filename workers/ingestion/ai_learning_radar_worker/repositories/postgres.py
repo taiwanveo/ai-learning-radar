@@ -350,6 +350,14 @@ class PostgresRepository:
         )
         return _required_id(cursor, "upsert_content")
 
+    def get_content_status(self, content_item_id: UUID) -> str | None:
+        cursor = self._connection.execute(
+            "SELECT status FROM content_items WHERE id = %s",
+            (content_item_id,),
+        )
+        row = cursor.fetchone()
+        return str(row[0]) if row else None
+
     def save_video_stats(
         self,
         content_item_id: UUID,

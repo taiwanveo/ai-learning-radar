@@ -183,6 +183,10 @@ class FakeRepository:
         self.content_ids.add(content_id)
         return content_id
 
+    def get_content_status(self, content_item_id: UUID) -> str | None:
+        del content_item_id
+        return None
+
     def save_video_stats(self, *args: Any, **kwargs: Any) -> None:
         del args, kwargs
 

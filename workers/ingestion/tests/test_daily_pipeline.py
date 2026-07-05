@@ -10,7 +10,7 @@ from ai_learning_radar_worker.llm.schemas import (
     SummaryResult,
 )
 from ai_learning_radar_worker.llm.tasks import TaskResult
-from ai_learning_radar_worker.pipelines.daily_digest import DailyDigestPipeline
+from ai_learning_radar_worker.pipelines.daily_digest import DailyDigestPipeline, PipelineReport
 from ai_learning_radar_worker.sources.youtube import ChannelMetadata, SearchResult, VideoMetadata
 from ai_learning_radar_worker.transcripts.youtube_transcript import (
     TranscriptResult,
@@ -179,6 +179,10 @@ class FakeRepository:
         self.calls.append("upsert_content")
         return self._id(content["source_content_id"])
 
+    def get_content_status(self, content_item_id: UUID) -> str | None:
+        self.calls.append("get_content_status")
+        return None
+
     def __getattr__(self, name: str) -> Any:
         if name.startswith(("save_", "mark_", "publish_")):
             def method(*args: Any, **kwargs: Any) -> UUID:
@@ -260,6 +264,27 @@ def test_filter_reason_enforces_shorts_and_engagement_gates() -> None:
     assert reason(short) == "shorts_excluded"
     assert reason(low_engagement) == "below_min_engagement"
     assert reason(healthy) is None
+
+
+def test_already_published_content_skips_filter_and_keeps_publishing() -> None:
+    class PublishedRepository(FakeRepository):
+        def get_content_status(self, content_item_id: Any) -> str | None:
+            self.calls.append("get_content_status")
+            return "published"
+
+    repository = PublishedRepository()
+    pipeline = build_pipeline(repository)
+    settings = {**topic()["settings"], "min_engagement_score": 0.05, "auto_publish": False}
+    low_engagement = _metadata("low", duration=600, views=1_000, likes=10)
+
+    report = PipelineReport(run_id=uuid5(NAMESPACE_URL, "r"))
+    processed = pipeline._process_video(
+        low_engagement, None, {}, {**topic(), "settings": settings}, report, dry_run=False
+    )
+
+    assert processed is not None
+    assert "mark_filtered" not in repository.calls
+    assert "save_summary" in repository.calls
 
 
 def test_manual_run_claims_existing_queued_run() -> None:

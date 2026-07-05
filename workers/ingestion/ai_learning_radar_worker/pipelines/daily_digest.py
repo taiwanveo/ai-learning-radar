@@ -62,6 +62,8 @@ class PipelineRepository(Protocol):
 
     def upsert_content(self, content: Mapping[str, Any], channel_id: UUID | None) -> UUID: ...
 
+    def get_content_status(self, content_item_id: UUID) -> str | None: ...
+
     def save_video_stats(
         self,
         content_item_id: UUID,
@@ -359,6 +361,7 @@ class DailyDigestPipeline:
         if not dry_run and channel is not None:
             channel_id = self.repository.upsert_channel(self._channel_record(channel))
         content_id = fallback_id
+        already_published = False
         if not dry_run:
             content_id = self.repository.upsert_content(self._content_record(item), channel_id)
             self.repository.save_video_stats(
@@ -368,7 +371,8 @@ class DailyDigestPipeline:
                 item.comment_count,
                 self.now,
             )
-        if reason is not None:
+            already_published = self.repository.get_content_status(content_id) == "published"
+        if reason is not None and not already_published:
             report.filtered += 1
             if not dry_run:
                 self.repository.mark_filtered(content_id, reason)
@@ -421,7 +425,7 @@ class DailyDigestPipeline:
         classification = classification_result.value.model_dump()
         if not dry_run:
             self.repository.save_classification(content_id, topic_id, classification)
-        if not classification["is_tutorial"]:
+        if not classification["is_tutorial"] and not already_published:
             report.filtered += 1
             if not dry_run:
                 self.repository.mark_filtered(content_id, "not_tutorial")
@@ -462,10 +466,10 @@ class DailyDigestPipeline:
                     model_id=quiz_result.model,
                     questions=[question.model_dump() for question in quiz_result.value.questions],
                 )
-            if bool(settings["auto_publish"]):
+            if bool(settings["auto_publish"]) and not already_published:
                 self.repository.publish_content(content_id)
         report.analyzed += 1
-        if bool(settings["auto_publish"]):
+        if bool(settings["auto_publish"]) or already_published:
             report.published += 1
         self._event(
             report,
