@@ -287,6 +287,15 @@ def test_already_published_content_skips_filter_and_keeps_publishing() -> None:
     assert "save_summary" in repository.calls
 
 
+def test_single_video_run_can_skip_writing_daily_snapshot() -> None:
+    repository = FakeRepository()
+    report = build_pipeline(repository).run([topic()], trigger="test", write_snapshot=False)
+
+    assert report.snapshots == 0
+    assert "save_snapshot" not in repository.calls
+    assert report.analyzed == 1
+
+
 def test_manual_run_claims_existing_queued_run() -> None:
     repository = FakeRepository()
     run_id = uuid5(NAMESPACE_URL, "queued-run")

@@ -286,7 +286,10 @@ def _run_test_video(args: argparse.Namespace) -> int:
             repository=repository,
             quiz_enabled=_enabled(os.environ, "QUIZ_ENABLED", default=False),
         )
-        report = pipeline.run([topics[0]], trigger="test")
+        # A single-video test/manual-add run only ever sees one candidate, so
+        # writing a daily snapshot here would replace the topic's real Top-N
+        # ranking for the day with a near-empty one.
+        report = pipeline.run([topics[0]], trigger="test", write_snapshot=False)
     print(json.dumps(report.as_dict(), ensure_ascii=False, default=str))
     return 0 if report.status == "succeeded" or report.analyzed > 0 else 1
 

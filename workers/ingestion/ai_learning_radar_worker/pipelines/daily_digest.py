@@ -160,6 +160,7 @@ class DailyDigestPipeline:
         dry_run: bool = False,
         trigger: str = "manual",
         run_id: UUID | None = None,
+        write_snapshot: bool = True,
     ) -> PipelineReport:
         settings_snapshot = {str(topic["id"]): topic["settings"] for topic in topics}
         if dry_run:
@@ -172,7 +173,7 @@ class DailyDigestPipeline:
         report = PipelineReport(run_id=run_id, topics=len(topics))
         try:
             for topic in topics:
-                self._run_topic(topic, report, dry_run=dry_run)
+                self._run_topic(topic, report, dry_run=dry_run, write_snapshot=write_snapshot)
             if report.failed:
                 report.status = "partial_failed"
         except Exception as exc:
@@ -188,7 +189,12 @@ class DailyDigestPipeline:
         return report
 
     def _run_topic(
-        self, topic: Mapping[str, Any], report: PipelineReport, *, dry_run: bool
+        self,
+        topic: Mapping[str, Any],
+        report: PipelineReport,
+        *,
+        dry_run: bool,
+        write_snapshot: bool = True,
     ) -> None:
         topic_id = UUID(str(topic["id"]))
         settings = topic["settings"]
@@ -319,7 +325,7 @@ class DailyDigestPipeline:
             top_n=int(settings["top_n"]),
             method=RankingMethod.FRESH_ENGAGEMENT,
         )
-        if not dry_run:
+        if not dry_run and write_snapshot:
             self.repository.save_snapshot(
                 topic_id,
                 self.now.date(),
@@ -327,7 +333,8 @@ class DailyDigestPipeline:
                 report.run_id,
                 [(UUID(item.content_id), item.fresh_engagement_score) for item in ranked],
             )
-        report.snapshots += 1
+        if write_snapshot:
+            report.snapshots += 1
         self._event(
             report,
             dry_run,
