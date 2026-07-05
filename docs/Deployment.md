@@ -44,6 +44,16 @@ ADMIN_OWNER_PASSWORD_HASH=<scrypt-hash-generated-by-web-cli>
 WORKER_TRIGGER_SECRET=<random-secret>
 ```
 
+後台「手動觸發 Run」按鈕會呼叫 GitHub Actions `workflow_dispatch`，Web 端需要：
+
+```bash
+GITHUB_TOKEN=<PAT，需 repo 的 Actions write 權限>
+GITHUB_REPOSITORY=<owner>/<repo>
+# 選填，預設值如下：
+# GITHUB_WORKFLOW_REF=main
+# GITHUB_WORKFLOW_FILE=ingest-daily.yml
+```
+
 ### 2.2 Worker — GitHub Actions secrets
 
 ```bash
@@ -227,6 +237,12 @@ QUIZ_ENABLED=false
 ```bash
 gh workflow run ingest-daily.yml -f topic_id=<topic_uuid> -f dry_run=false
 ```
+
+### 8.3 管理後台
+
+後台 `/admin/runs` 的「手動觸發 Run」會先建立 `queued` run，再以
+`workflow_dispatch` 帶入 `run_id` 啟動 workflow；worker 以 `--run-id`
+認領該筆紀錄並回寫執行結果。
 
 ## 9. Article ingestion 未來部署
 

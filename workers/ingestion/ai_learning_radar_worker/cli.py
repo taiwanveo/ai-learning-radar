@@ -46,6 +46,10 @@ def build_parser() -> argparse.ArgumentParser:
     daily = subparsers.add_parser("daily", help="Run the daily ingestion pipeline")
     daily.add_argument("--topic-id")
     daily.add_argument("--dry-run", action="store_true")
+    daily.add_argument(
+        "--run-id",
+        help="Claim an existing queued agent_runs row (manual trigger from the admin console)",
+    )
 
     backfill = subparsers.add_parser("backfill", help="Backfill a historical date range")
     backfill.add_argument("--days", type=int, required=True)
@@ -115,11 +119,16 @@ def _run_daily(args: argparse.Namespace) -> int:
 
     import psycopg
 
-    with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+    # autocommit avoids idle-in-transaction timeouts while long LLM calls run
+    # between statements; multi-statement writes still use explicit transactions.
+    with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as connection:
         repository = PostgresRepository(connection)
         topic_id = UUID(args.topic_id) if args.topic_id else None
+        run_id = UUID(args.run_id) if args.run_id else None
         topics = repository.load_active_topics(topic_id)
         if not topics:
+            if run_id is not None and not args.dry_run:
+                repository.finish_run(run_id, "failed", {}, "no active topics matched the request")
             print("No active topics matched the request", file=sys.stderr)
             return 2
         pipeline = DailyDigestPipeline(
@@ -129,7 +138,12 @@ def _run_daily(args: argparse.Namespace) -> int:
             repository=repository,
             quiz_enabled=_enabled(os.environ, "QUIZ_ENABLED", default=False),
         )
-        report = pipeline.run(topics, dry_run=args.dry_run, trigger="scheduled")
+        report = pipeline.run(
+            topics,
+            dry_run=args.dry_run,
+            trigger="manual" if run_id is not None else "scheduled",
+            run_id=run_id,
+        )
     print(json.dumps(report.as_dict(), ensure_ascii=False, default=str))
     return 0 if report.status == "succeeded" or report.analyzed > 0 else 1
 
@@ -199,7 +213,7 @@ def _run_test_video(args: argparse.Namespace) -> int:
     if not metadata:
         print("YouTube video was not found", file=sys.stderr)
         return 1
-    with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+    with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as connection:
         repository = PostgresRepository(connection)
         topic_id = UUID(args.topic_id) if args.topic_id else None
         topics = repository.load_active_topics(topic_id)

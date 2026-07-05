@@ -57,6 +57,7 @@ enum ChannelListType {
 }
 
 enum RunStatus {
+  queued
   running
   succeeded
   partial_failed

@@ -202,8 +202,11 @@ primary 失敗時會依序改用下一個。
 
 - 每列一個 run：開始時間、觸發方式（`manual` / `scheduled`）、狀態
   （`queued` / `succeeded` / `partial_failed` / `failed`）、各 phase 統計與失敗事件。
-- **手動觸發 Run**：按右上角按鈕把 run 排入佇列。同一位管理者
-  **60 秒內只能觸發一次**（rate limit）。
+- **手動觸發 Run**：按右上角按鈕建立一筆 `queued` run，並透過 GitHub Actions
+  `workflow_dispatch` 啟動 ingest-daily workflow；worker 啟動後會把該筆 run 標為
+  `running` 並回寫統計。同一位管理者 **60 秒內只能觸發一次**（rate limit）。
+  Web 端需設定 `GITHUB_TOKEN` 與 `GITHUB_REPOSITORY` 環境變數，否則觸發會回報
+  設定錯誤。
 
 實際執行 daily pipeline 的是 Python worker（由 GitHub Actions 排程或手動執行）：
 

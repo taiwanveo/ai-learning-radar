@@ -155,6 +155,9 @@ class FakeRepository:
         self.calls.append("create_run")
         return self._id("run")
 
+    def claim_run(self, run_id: UUID, settings_snapshot: Any) -> None:
+        self.calls.append("claim_run")
+
     def finish_run(self, run_id: UUID, status: str, *args: Any, **kwargs: Any) -> None:
         self.calls.append("finish_run")
         self.finished_status = status
@@ -218,6 +221,17 @@ def test_dry_run_performs_no_repository_writes() -> None:
 
     assert report.status == "partial_failed"
     assert repository.calls == []
+
+
+def test_manual_run_claims_existing_queued_run() -> None:
+    repository = FakeRepository()
+    run_id = uuid5(NAMESPACE_URL, "queued-run")
+    report = build_pipeline(repository).run([topic()], trigger="manual", run_id=run_id)
+
+    assert report.run_id == run_id
+    assert "claim_run" in repository.calls
+    assert "create_run" not in repository.calls
+    assert repository.finished_status == "partial_failed"
 
 
 def test_metadata_only_pipeline_skips_transcripts_and_quizzes() -> None:

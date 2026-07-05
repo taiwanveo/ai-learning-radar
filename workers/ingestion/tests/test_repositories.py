@@ -191,6 +191,27 @@ def test_run_and_event_logging(repository: tuple[PostgresRepository, FakeConnect
     assert "UPDATE agent_runs" in sql
 
 
+def test_claim_run_marks_queued_run_as_running(
+    repository: tuple[PostgresRepository, FakeConnection],
+) -> None:
+    repo, connection = repository
+    repo.claim_run(IDS[0], {"topic": "settings"})
+
+    sql, params = connection.statements[0]
+    assert "UPDATE agent_runs" in sql
+    assert "status = 'running'" in sql
+    assert params[-1] == IDS[0]
+
+
+def test_claim_run_raises_for_missing_run(
+    repository: tuple[PostgresRepository, FakeConnection],
+) -> None:
+    repo, connection = repository
+    connection.execute = lambda query, params=None: FakeCursor()  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError, match="does not exist"):
+        repo.claim_run(IDS[0], {})
+
+
 def test_topic_loading_and_classification_updates(
     repository: tuple[PostgresRepository, FakeConnection],
 ) -> None:

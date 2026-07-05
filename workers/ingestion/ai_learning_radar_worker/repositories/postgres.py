@@ -131,6 +131,20 @@ class PostgresRepository:
         )
         return _required_id(cursor, "create_run")
 
+    def claim_run(self, run_id: UUID, settings_snapshot: Mapping[str, Any]) -> None:
+        """Take over a queued run created by the admin console."""
+        cursor = self._connection.execute(
+            """
+            UPDATE agent_runs
+            SET status = 'running', started_at = now(), settings_snapshot = %s::jsonb
+            WHERE id = %s
+            RETURNING id
+            """,
+            (_json(settings_snapshot), run_id),
+        )
+        if cursor.fetchone() is None:
+            raise RuntimeError(f"run {run_id} does not exist")
+
     def finish_run(
         self,
         run_id: UUID,

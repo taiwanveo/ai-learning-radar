@@ -31,6 +31,8 @@ class PipelineRepository(Protocol):
         requested_by_admin_id: UUID | None = None,
     ) -> UUID: ...
 
+    def claim_run(self, run_id: UUID, settings_snapshot: Mapping[str, Any]) -> None: ...
+
     def finish_run(
         self,
         run_id: UUID,
@@ -155,9 +157,16 @@ class DailyDigestPipeline:
         *,
         dry_run: bool = False,
         trigger: str = "manual",
+        run_id: UUID | None = None,
     ) -> PipelineReport:
         settings_snapshot = {str(topic["id"]): topic["settings"] for topic in topics}
-        run_id = uuid4() if dry_run else self.repository.create_run(trigger, settings_snapshot)
+        if dry_run:
+            run_id = run_id or uuid4()
+        elif run_id is not None:
+            # Manual runs are pre-created as `queued` by the admin console.
+            self.repository.claim_run(run_id, settings_snapshot)
+        else:
+            run_id = self.repository.create_run(trigger, settings_snapshot)
         report = PipelineReport(run_id=run_id, topics=len(topics))
         try:
             for topic in topics:
