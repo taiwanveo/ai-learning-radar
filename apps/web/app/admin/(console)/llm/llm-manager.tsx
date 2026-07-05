@@ -11,8 +11,14 @@ type PublicKey = {
   maskedKey: string;
   isActive: boolean;
   validationStatus: "valid" | "invalid" | null;
+  validationError: string | null;
   lastValidatedAt: string | null;
 };
+
+function validatedAtLabel(iso: string | null): string {
+  if (!iso) return "";
+  return new Intl.DateTimeFormat("zh-Hant", { dateStyle: "short", timeStyle: "medium", timeZone: "Asia/Taipei" }).format(new Date(iso));
+}
 
 type FallbackChainSetting = { taskType: string; provider: string; modelId: string; priority: number };
 type ModelGroup = { provider: string; label: string; models: string[] };
@@ -124,7 +130,7 @@ export function LlmManager() {
     }
   }
 
-  async function validate(keyId: string) {
+  async function validate(keyId: string, displayName: string) {
     setPending(true);
     setMessage("");
     try {
@@ -133,9 +139,15 @@ export function LlmManager() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ keyId }),
       });
-      const payload = await response.json().catch(() => null);
-      setMessage(response.ok ? "金鑰有效" : (payload?.error ?? "驗證失敗，請稍後再試"));
-      await reload();
+      const payload = await response.json().catch(() => null) as { models?: string[]; error?: string } | null;
+      if (response.ok) {
+        const count = payload?.models?.length ?? 0;
+        setMessage(`「${displayName}」驗證成功 ✓（${new Date().toLocaleTimeString("zh-Hant", { hour12: false })}），provider 回報 ${count} 個可用模型，下方模型清單已更新`);
+        await Promise.all([reload(), reloadModels()]);
+      } else {
+        setMessage(`「${displayName}」驗證失敗：${payload?.error ?? "請稍後再試"}`);
+        await reload();
+      }
     } catch {
       setMessage("無法連線至伺服器，請確認網路後再試");
     } finally {
@@ -221,9 +233,13 @@ export function LlmManager() {
         {keys.length === 0 ? <p>尚未設定金鑰。</p> : (
           <ul className={styles.keys}>{keys.map((key) => (
             <li key={key.id}>
-              <div><strong>{key.displayName}</strong><span>{PROVIDER_LABELS[key.provider] ?? key.provider} · {key.maskedKey}</span></div>
-              <span>{key.validationStatus === "valid" ? "有效" : "待驗證"}</span>
-              <button type="button" disabled={pending} onClick={() => void validate(key.id)}>{pending ? "處理中…" : "重新驗證"}</button>
+              <div>
+                <strong>{key.displayName}</strong>
+                <span>{PROVIDER_LABELS[key.provider] ?? key.provider} · {key.maskedKey}{key.lastValidatedAt ? ` · 上次驗證 ${validatedAtLabel(key.lastValidatedAt)}` : ""}</span>
+                {key.validationStatus === "invalid" && key.validationError ? <span role="alert">驗證失敗原因：{key.validationError}</span> : null}
+              </div>
+              <span>{key.validationStatus === "valid" ? "有效" : key.validationStatus === "invalid" ? "無效" : "待驗證"}</span>
+              <button type="button" disabled={pending} onClick={() => void validate(key.id, key.displayName)}>{pending ? "處理中…" : "重新驗證"}</button>
               <button type="button" disabled={pending} onClick={() => void deactivate(key.id, key.displayName)}>{pending ? "處理中…" : "停用"}</button>
             </li>
           ))}</ul>
