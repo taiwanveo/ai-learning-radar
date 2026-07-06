@@ -224,6 +224,10 @@ secrets 設定與 Web 相同的 `APP_SECRET_KEY`）。前台「產生學習順�
   `running` 並回寫統計。同一位管理者 **60 秒內只能觸發一次**（rate limit）。
   Web 端需設定 `GITHUB_TOKEN` 與 `GITHUB_REPOSITORY` 環境變數，否則觸發會回報
   設定錯誤。
+- **暫停排程 / 重啟排程**：右上角另有一個狀態徽章（排程中／已暫停）與切換按鈕。
+  暫停後，GitHub Actions 每日 06:00 的 cron 觸發會在建立任何候選、呼叫 LLM 之前
+  就直接跳過（節省 token），但**不影響**「手動觸發 Run」——手動觸發一律會執行。
+  狀態存在 `schedule_control` 這張單列表中，worker 在 `daily` 指令一開始就會檢查。
 
 實際執行 daily pipeline 的是 Python worker（由 GitHub Actions 排程或手動執行）：
 

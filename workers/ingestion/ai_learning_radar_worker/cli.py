@@ -179,6 +179,11 @@ def _run_ingestion(
         topic_id = UUID(args.topic_id) if args.topic_id else None
         run_id_arg = getattr(args, "run_id", None)
         run_id = UUID(run_id_arg) if run_id_arg else None
+        # Only the unattended cron trigger (no run_id) respects the admin
+        # console's pause toggle; manual/backfill runs always proceed.
+        if trigger == "scheduled" and run_id is None and repository.is_schedule_paused():
+            print("Daily schedule is paused via /admin/runs; skipping this run.")
+            return 0
         topics = repository.load_active_topics(topic_id)
         if not topics:
             if run_id is not None and not args.dry_run:

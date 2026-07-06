@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import type { ContentItem, SearchSettings, Topic } from "@/server/admin/types";
+import type { ContentItem, ScheduleStatus, SearchSettings, Topic } from "@/server/admin/types";
 import { Tip } from "@/components/admin/admin-page";
 
 type Feedback = { kind: "success" | "error"; message: string } | null;
@@ -78,3 +78,31 @@ export function ContentEditButton({ item, canWrite }: { item: ContentItem; canWr
 }
 
 export function TriggerRunButton({ canWrite }: { canWrite:boolean }) { const router=useRouter();const[pending,setPending]=useState(false);const[feedback,setFeedback]=useState<Feedback>(null);if(!canWrite)return null;async function trigger(){setPending(true);setFeedback(null);try{await mutate("/api/admin/runs/trigger","POST");setFeedback({kind:"success",message:"Run 已排入佇列"});router.refresh();}catch(e){setFeedback({kind:"error",message:e instanceof Error?e.message:"觸發失敗"});}finally{setPending(false);}}return <div><button className="admin-button" type="button" disabled={pending} onClick={trigger}>{pending?"觸發中…":"手動觸發 Run"}</button><Status feedback={feedback}/></div>; }
+
+export function ScheduleToggle({ canWrite, initial }: { canWrite: boolean; initial: ScheduleStatus }) {
+  const router = useRouter();
+  const [schedule, setSchedule] = useState(initial);
+  const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  async function toggle() {
+    const action = schedule.isPaused ? "resume" : "pause";
+    setPending(true); setFeedback(null);
+    try {
+      const payload = await mutate("/api/admin/schedule", "POST", { action }) as { schedule: ScheduleStatus };
+      setSchedule(payload.schedule);
+      setFeedback({ kind: "success", message: action === "pause" ? "每日排程已暫停" : "每日排程已重啟" });
+      router.refresh();
+    } catch (e) {
+      setFeedback({ kind: "error", message: e instanceof Error ? e.message : "操作失敗" });
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <div className="admin-schedule-toggle">
+      <span className={`admin-badge${schedule.isPaused ? " admin-badge--danger" : ""}`}>{schedule.isPaused ? "已暫停" : "排程中"}</span>
+      {canWrite && <button className="admin-button" type="button" disabled={pending} onClick={toggle}>{pending ? "處理中…" : schedule.isPaused ? "重啟排程" : "暫停排程"}</button>}
+      <Status feedback={feedback}/>
+    </div>
+  );
+}

@@ -1,17 +1,17 @@
 import { AdminPage, EmptyState, Tip } from "@/components/admin/admin-page";
 import { getAdminRepository } from "@/server/admin/repository";
 import { getSession } from "@/server/auth";
-import { TriggerRunButton } from "@/components/admin/admin-controls";
+import { ScheduleToggle, TriggerRunButton } from "@/components/admin/admin-controls";
 import { RunEventsButton } from "@/components/admin/run-events-button";
 
 const TRIGGER_LABELS: Record<string, string> = { manual: "手動", scheduled: "排程", backfill: "回補", test: "單片測試" };
 const STATUS_LABELS: Record<string, string> = { queued: "排隊中", running: "執行中", succeeded: "成功", failed: "失敗" };
 
 export default async function RunsPage() {
-  const [runs, session] = await Promise.all([getAdminRepository().listRuns(), getSession()]);
+  const [runs, session, schedule] = await Promise.all([getAdminRepository().listRuns(), getSession(), getAdminRepository().getScheduleStatus()]);
   const canWrite = session?.role !== "viewer";
   return (
-    <AdminPage title="執行紀錄" description="查看 pipeline phase 統計與失敗事件。" action={<TriggerRunButton canWrite={canWrite}/>}>
+    <AdminPage title="執行紀錄" description="查看 pipeline phase 統計與失敗事件。" action={<div className="admin-page-actions"><ScheduleToggle canWrite={canWrite} initial={schedule}/><TriggerRunButton canWrite={canWrite}/></div>}>
       <div className="admin-panel">
         {runs.length ? (
           <table className="admin-table">

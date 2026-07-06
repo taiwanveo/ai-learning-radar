@@ -149,6 +149,13 @@ class PostgresRepository:
             chains.setdefault(str(row[0]), []).append((str(row[1]), str(row[2])))
         return chains
 
+    def is_schedule_paused(self) -> bool:
+        cursor = self._connection.execute(
+            "SELECT is_paused FROM schedule_control WHERE id = 'singleton'"
+        )
+        row = cursor.fetchone()
+        return bool(row[0]) if row else False
+
     def create_run(
         self,
         trigger_type: str,

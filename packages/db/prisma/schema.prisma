@@ -92,6 +92,7 @@ model Admin {
   difficultyOverrides ContentItem[]  @relation("DifficultyOverride")
   requestedRuns       AgentRun[]
   createdLlmApiKeys   LlmApiKey[]
+  pausedSchedules     ScheduleControl[]
 
   @@map("admins")
 }
@@ -481,6 +482,20 @@ model AgentRun {
   @@index([status, startedAt(sort: Desc)])
   @@index([requestedByAdminId])
   @@map("agent_runs")
+}
+
+// Singleton row (id is always "singleton") that lets the admin console pause
+// the scheduled daily ingestion without touching the GitHub Actions workflow
+// file. Manual/workflow_dispatch runs ignore this flag.
+model ScheduleControl {
+  id              String    @id @default("singleton")
+  isPaused        Boolean   @default(false) @map("is_paused")
+  pausedAt        DateTime? @map("paused_at") @db.Timestamptz(6)
+  pausedByAdminId String?   @map("paused_by_admin_id") @db.Uuid
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  pausedByAdmin   Admin?    @relation(fields: [pausedByAdminId], references: [id], onDelete: SetNull)
+
+  @@map("schedule_control")
 }
 
 model AgentRunEvent {

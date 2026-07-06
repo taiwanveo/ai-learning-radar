@@ -212,6 +212,25 @@ def test_claim_run_raises_for_missing_run(
         repo.claim_run(IDS[0], {})
 
 
+def test_is_schedule_paused_reflects_flag(
+    repository: tuple[PostgresRepository, FakeConnection],
+) -> None:
+    repo, connection = repository
+    connection.execute = lambda query, params=None: FakeCursor((True,))  # type: ignore[method-assign]
+    assert repo.is_schedule_paused() is True
+
+    connection.execute = lambda query, params=None: FakeCursor((False,))  # type: ignore[method-assign]
+    assert repo.is_schedule_paused() is False
+
+
+def test_is_schedule_paused_defaults_false_when_missing(
+    repository: tuple[PostgresRepository, FakeConnection],
+) -> None:
+    repo, connection = repository
+    connection.execute = lambda query, params=None: FakeCursor()  # type: ignore[method-assign]
+    assert repo.is_schedule_paused() is False
+
+
 def test_topic_loading_and_classification_updates(
     repository: tuple[PostgresRepository, FakeConnection],
 ) -> None:

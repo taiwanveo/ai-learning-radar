@@ -30,6 +30,7 @@ export interface ContentItem { id: string; sourceContentId: string; sourceUrl: s
 export interface RunEvent { id: string; phase: string; level: "info" | "warning" | "error"; message: string; createdAt: string }
 export interface AgentRun { id: string; status: "queued" | "running" | "succeeded" | "failed"; trigger: "scheduled" | "manual" | "backfill" | "test"; startedAt: string; finishedAt: string | null; statistics: Record<string, number>; events: RunEvent[] }
 export interface AuditLog { id: string; adminId: string; action: string; entityType: string; entityId: string | null; before: unknown; after: unknown; createdAt: string }
+export interface ScheduleStatus { isPaused: boolean; pausedAt: string | null; pausedByAdminId: string | null }
 
 export interface AdminRepository {
   listTopics(): Promise<Topic[]>;
@@ -50,4 +51,7 @@ export interface AdminRepository {
   getRun(id: string): Promise<AgentRun | null>;
   triggerRun(actor: AdminActor): Promise<AgentRun>;
   listAuditLogs(): Promise<AuditLog[]>;
+  getScheduleStatus(): Promise<ScheduleStatus>;
+  pauseSchedule(actor: AdminActor): Promise<ScheduleStatus>;
+  resumeSchedule(actor: AdminActor): Promise<ScheduleStatus>;
 }

@@ -1,4 +1,4 @@
-import type { AdminActor, AdminRepository, AgentRun, AuditLog, Channel, ContentItem, SearchSettings, Topic } from "./types";
+import type { AdminActor, AdminRepository, AgentRun, AuditLog, Channel, ContentItem, ScheduleStatus, SearchSettings, Topic } from "./types";
 import { DEFAULT_SEARCH_SETTINGS } from "./types";
 import { PrismaAdminRepository } from "./prisma-repository";
 
@@ -12,6 +12,7 @@ export class MemoryAdminRepository implements AdminRepository {
   private content: ContentItem[] = [];
   private runs: AgentRun[] = [];
   private audit: AuditLog[] = [];
+  private schedule: ScheduleStatus = { isPaused: false, pausedAt: null, pausedByAdminId: null };
 
   constructor(topics: Topic[] = []) { this.topics = clone(topics); }
   private log(actor: AdminActor, action: string, entityType: string, entityId: string | null, before: unknown, after: unknown) { this.audit.unshift({ id: id(), adminId: actor.id, action, entityType, entityId, before: clone(before), after: clone(after), createdAt: new Date().toISOString() }); }
@@ -33,6 +34,9 @@ export class MemoryAdminRepository implements AdminRepository {
   async getRun(runId: string) { return clone(this.runs.find(r => r.id === runId) ?? null); }
   async triggerRun(actor: AdminActor) { const run: AgentRun = { id: id(), status: "queued", trigger: "manual", startedAt: new Date().toISOString(), finishedAt: null, statistics: { queued: 1 }, events: [] }; this.runs.unshift(run); this.log(actor, "trigger", "agent_run", run.id, null, run); return clone(run); }
   async listAuditLogs() { return clone(this.audit); }
+  async getScheduleStatus() { return clone(this.schedule); }
+  async pauseSchedule(actor: AdminActor) { const before = clone(this.schedule); this.schedule = { isPaused: true, pausedAt: new Date().toISOString(), pausedByAdminId: actor.id }; this.log(actor, "pause", "schedule_control", "singleton", before, this.schedule); return clone(this.schedule); }
+  async resumeSchedule(actor: AdminActor) { const before = clone(this.schedule); this.schedule = { isPaused: false, pausedAt: null, pausedByAdminId: null }; this.log(actor, "resume", "schedule_control", "singleton", before, this.schedule); return clone(this.schedule); }
 }
 
 function defaultRepository(): AdminRepository {
