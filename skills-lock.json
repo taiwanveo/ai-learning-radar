@@ -1,6 +1,36 @@
 {
   "version": 1,
   "skills": {
+    "artifact-template-business-review": {
+      "source": "custom/artifact-templates",
+      "sourceType": "local",
+      "skillPath": "skills/artifact-template-business-review/SKILL.md",
+      "computedHash": "local-installed"
+    },
+    "artifact-template-market-trends-report": {
+      "source": "custom/artifact-templates",
+      "sourceType": "local",
+      "skillPath": "skills/artifact-template-market-trends-report/SKILL.md",
+      "computedHash": "local-installed"
+    },
+    "artifact-template-simple-dark-mode": {
+      "source": "custom/artifact-templates",
+      "sourceType": "local",
+      "skillPath": "skills/artifact-template-simple-dark-mode/SKILL.md",
+      "computedHash": "local-installed"
+    },
+    "artifact-template-simple-light-mode": {
+      "source": "custom/artifact-templates",
+      "sourceType": "local",
+      "skillPath": "skills/artifact-template-simple-light-mode/SKILL.md",
+      "computedHash": "local-installed"
+    },
+    "canva-branded-presentation": {
+      "source": "custom/presentation-skills",
+      "sourceType": "local",
+      "skillPath": "skills/canva-branded-presentation/SKILL.md",
+      "computedHash": "local-installed"
+    },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",

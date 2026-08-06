@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "sourceId": "bd8e2be42a84",
+      "relative": "assets/user-media/screenshot-home.png",
+      "kind": "image",
+      "mime": "image/png"
+    },
+    {
+      "sourceId": "ebb469823d9c",
+      "relative": "assets/user-media/screenshot-admin-topics.png",
+      "kind": "image",
+      "mime": "image/png"
+    },
+    {
+      "sourceId": "e263f6454467",
+      "relative": "assets/user-media/screenshot-admin-channels.png",
+      "kind": "image",
+      "mime": "image/png"
+    },
+    {
+      "sourceId": "194e5586ae1b",
+      "relative": "assets/user-media/screenshot-video-detail.png",
+      "kind": "image",
+      "mime": "image/png"
+    },
+    {
+      "sourceId": "9e729b46a1a5",
+      "relative": "assets/user-media/screenshot-quiz.png",
+      "kind": "image",
+      "mime": "image/png"
+    }
+  ]
+}
