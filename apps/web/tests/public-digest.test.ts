@@ -23,7 +23,7 @@ describe("public digest API", () => {
   });
 
   it("supports the documented published, content type, level, and beginner sort aliases", async () => {
-    const response = await GET(new Request("http://localhost/api/public/digest?published=7d&content_type=video&level=beginner&sort=beginner"));
+    const response = await GET(new Request("http://localhost/api/public/digest?published=7d&content_type=video&level=beginner&sort=beginner&date=2026-07-05"));
     expect(response.status).toBe(200);
     const body = publicDigestResponseSchema.parse(await response.json());
     expect(body.items.length).toBeGreaterThan(0);
